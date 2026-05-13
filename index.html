@@ -1,45 +1,447 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>BetawithGamma</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BetawithGamma | AI Fintech Analytics Platform</title>
+  <meta name="description" content="BetawithGamma is an AI-first fintech analytics platform for Indian derivatives, options-market research, volatility analytics, risk visualization, and AI-assisted financial explanation." />
+
   <style>
-    body { font-family: Arial, sans-serif; max-width: 850px; margin: 60px auto; padding: 20px; line-height: 1.6; }
-    h1 { font-size: 42px; }
-    .box { background: #f4f4f4; padding: 20px; border-radius: 12px; }
+    :root {
+      --bg: #0b1020;
+      --panel: #111827;
+      --panel2: #172033;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --soft: #94a3b8;
+      --accent: #38bdf8;
+      --accent2: #a78bfa;
+      --border: rgba(255,255,255,0.12);
+      --green: #22c55e;
+      --red: #fb7185;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: radial-gradient(circle at top left, #1e3a8a 0, #0b1020 35%, #050816 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      width: min(1120px, 92%);
+      margin: auto;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(18px);
+      background: rgba(5, 8, 22, 0.78);
+      border-bottom: 1px solid var(--border);
+    }
+
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 0;
+    }
+
+    .brand {
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      font-size: 22px;
+    }
+
+    .navlinks {
+      display: flex;
+      gap: 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .hero {
+      padding: 90px 0 70px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    h1 {
+      font-size: clamp(42px, 7vw, 76px);
+      line-height: 1.02;
+      margin: 0 0 24px;
+      letter-spacing: -0.06em;
+      max-width: 900px;
+    }
+
+    .hero p {
+      font-size: 19px;
+      color: var(--muted);
+      max-width: 760px;
+      margin-bottom: 32px;
+    }
+
+    .cta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 28px;
+    }
+
+    .btn {
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #020617;
+    }
+
+    .btn.secondary {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+    }
+
+    section {
+      padding: 58px 0;
+    }
+
+    .section-title {
+      font-size: 34px;
+      line-height: 1.15;
+      margin: 0 0 14px;
+      letter-spacing: -0.04em;
+    }
+
+    .section-subtitle {
+      color: var(--muted);
+      max-width: 760px;
+      margin-bottom: 30px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.035));
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 24px;
+      min-height: 170px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.24);
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 20px;
+    }
+
+    .card p, .card li {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .metric {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+
+    ul {
+      padding-left: 18px;
+      margin: 0;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(56,189,248,0.13);
+      color: #bae6fd;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .warning {
+      border-left: 4px solid var(--red);
+      background: rgba(251,113,133,0.08);
+    }
+
+    .roadmap li {
+      margin-bottom: 10px;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 34px 0;
+      color: var(--soft);
+      font-size: 14px;
+    }
+
+    .footer-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 800px) {
+      .navlinks {
+        display: none;
+      }
+
+      .grid-3, .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding-top: 58px;
+      }
+    }
   </style>
 </head>
+
 <body>
-  <h1>BetawithGamma</h1>
+  <header>
+    <div class="container">
+      <nav>
+        <div class="brand">BetawithGamma</div>
+        <div class="navlinks">
+          <a href="#product">Product</a>
+          <a href="#technology">Technology</a>
+          <a href="#roadmap">Roadmap</a>
+          <a href="#contact">Contact</a>
+        </div>
+      </nav>
+    </div>
+  </header>
 
-  <h2>AI-first fintech analytics platform</h2>
+  <main>
+    <section class="hero">
+      <div class="container">
+        <div class="badge"><span class="dot"></span> AI-first fintech analytics startup</div>
+        <h1>Market intelligence for options, volatility, and risk interpretation.</h1>
+        <p>
+          BetawithGamma is building an AI-assisted analytics platform for Indian derivatives and options-market research.
+          The product converts live market data, option-chain metrics, volatility signals, and risk context into explainable dashboards for research, education, and decision support.
+        </p>
 
-  <p>
-    BetawithGamma is building market analytics tools for Indian derivatives and options-market research.
-    The platform focuses on option-chain analytics, volatility interpretation, risk visualization,
-    and AI-assisted financial explanation.
-  </p>
+        <div class="cta">
+          <a class="btn primary" href="#contact">Contact Founder</a>
+          <a class="btn secondary" href="#product">View Product Direction</a>
+        </div>
+      </div>
+    </section>
 
-  <div class="box">
-    <h3>Current product status</h3>
-    <ul>
-      <li>Python/Tkinter desktop analytics prototype built</li>
-      <li>AI finance analyzer ready</li>
-      <li>Web application under development</li>
-      <li>Cloud-native backend and dashboard planned</li>
-    </ul>
-  </div>
+    <section id="product">
+      <div class="container">
+        <h2 class="section-title">Product thesis</h2>
+        <p class="section-subtitle">
+          Traders and learners face noisy option-chain data, fragmented tools, and weak risk visibility. BetawithGamma focuses on turning raw market signals into structured, explainable analytics.
+        </p>
 
-  <h3>Important disclaimer</h3>
-  <p>
-    BetawithGamma provides analytics, research support, education, and risk interpretation.
-    It does not provide guaranteed-profit claims or personalized investment advice.
-  </p>
+        <div class="grid grid-3">
+          <div class="card">
+            <h3>Option-chain intelligence</h3>
+            <p>
+              Tools for monitoring option-chain behavior, volatility movement, liquidity context, and derivatives-market structure.
+            </p>
+          </div>
 
-  <h3>Founder</h3>
-  <p>Lalan Kumar Mishra<br>Founder & Lead Software Engineer</p>
+          <div class="card">
+            <h3>AI finance analyzer</h3>
+            <p>
+              AI-assisted explanation layer for market context, scenario interpretation, risk summaries, and learning support.
+            </p>
+          </div>
 
-  <h3>Contact</h3>
-  <p>Email: lalan10mishra@betawithgamma.com</p>
+          <div class="card">
+            <h3>Risk-first dashboards</h3>
+            <p>
+              Visual interfaces designed to highlight uncertainty, risk zones, evidence quality, and interpretation limits.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="traction">
+      <div class="container">
+        <h2 class="section-title">Current progress</h2>
+        <p class="section-subtitle">
+          The product is moving from local prototype to cloud-native web platform.
+        </p>
+
+        <div class="grid grid-3">
+          <div class="card">
+            <div class="status">Built</div>
+            <h3>Desktop prototype</h3>
+            <p>Python/Tkinter analytics prototype for market-data workflows and derivatives analysis.</p>
+          </div>
+
+          <div class="card">
+            <div class="status">Built</div>
+            <h3>AI analyzer</h3>
+            <p>Initial AI finance analyzer for structured financial explanation and research support.</p>
+          </div>
+
+          <div class="card">
+            <div class="status">In progress</div>
+            <h3>Web application</h3>
+            <p>Cloud-ready web interface planned for dashboards, backend APIs, monitoring, and analytics storage.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="technology">
+      <div class="container">
+        <h2 class="section-title">Planned cloud architecture</h2>
+        <p class="section-subtitle">
+          Google Cloud is intended for scalable deployment, AI integration, monitoring, secure configuration, and analytics infrastructure.
+        </p>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>Infrastructure</h3>
+            <ul>
+              <li>Cloud Run / Compute services for backend APIs</li>
+              <li>Firebase or static hosting for frontend delivery</li>
+              <li>Cloud SQL / Firestore for structured product data</li>
+              <li>Secret Manager for secure API and credential handling</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h3>AI and analytics</h3>
+            <ul>
+              <li>Gemini / Vertex AI for explanation and summarization layers</li>
+              <li>BigQuery for historical analytics and evaluation datasets</li>
+              <li>Cloud Logging and Monitoring for reliability tracking</li>
+              <li>Future model-evaluation workflow for evidence scoring</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <div class="container">
+        <h2 class="section-title">Roadmap</h2>
+        <p class="section-subtitle">
+          The next build phase is focused on evidence, reliability, and cloud migration — not exaggerated trading claims.
+        </p>
+
+        <div class="grid grid-2">
+          <div class="card roadmap">
+            <h3>Near-term milestones</h3>
+            <ul>
+              <li>Launch public web dashboard prototype</li>
+              <li>Build secure backend API layer</li>
+              <li>Add AI explanation and market-summary modules</li>
+              <li>Add user feedback and research workflow capture</li>
+              <li>Set up monitoring, logs, and latency visibility</li>
+            </ul>
+          </div>
+
+          <div class="card roadmap">
+            <h3>Evidence gates</h3>
+            <ul>
+              <li>Document product scope and non-advisory boundaries</li>
+              <li>Track real user feedback before monetization claims</li>
+              <li>Separate analytics from order execution</li>
+              <li>Validate AI outputs with disclaimers and audit logs</li>
+              <li>Measure reliability before production scaling</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="compliance">
+      <div class="container">
+        <div class="card warning">
+          <h2 class="section-title">Important disclaimer</h2>
+          <p>
+            BetawithGamma provides analytics, research support, education, and risk interpretation. It does not provide guaranteed-profit claims, personalized investment advice, or regulated investment advisory services. Users are responsible for their own financial decisions.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact">
+      <div class="container">
+        <h2 class="section-title">Contact</h2>
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>Founder</h3>
+            <p>
+              Lalan Kumar Mishra<br />
+              Founder & Lead Software Engineer
+            </p>
+          </div>
+
+          <div class="card">
+            <h3>Business email</h3>
+            <p>
+              <a href="mailto:lalan10mishra@betawithgamma.com">lalan10mishra@betawithgamma.com</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-row">
+      <div>© 2026 BetawithGamma. All rights reserved.</div>
+      <div>AI fintech analytics · Research support · Risk interpretation</div>
+    </div>
+  </footer>
 </body>
 </html>
