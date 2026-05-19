@@ -1,0 +1,11 @@
+{
+  "status": "LOCAL_EXTERNAL_ROOT_PROTOCOL_EXTERNAL_TRUST_NONE",
+  "external_trust": "NONE",
+  "Runtime": "BLOCKED",
+  "Feed": "BLOCKED",
+  "Signals": "BLOCKED",
+  "Broker-write": "BLOCKED",
+  "Production-ready": false,
+  "Scalping edge": "UNSUPPORTED",
+  "Broker regulatory clearance": "UNVERIFIED_BLOCKED"
+}

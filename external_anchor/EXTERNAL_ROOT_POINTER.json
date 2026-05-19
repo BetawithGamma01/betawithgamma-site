@@ -1,0 +1,15 @@
+{
+  "external_record_type": "REPO_ONLY_PUBLIC_KEY",
+  "external_record_url_or_id": "repo:local-only-anchor",
+  "external_record_identity": "UNVERIFIED_LOCAL",
+  "external_record_timestamp": "2026-05-19T00:00:00Z",
+  "public_key_external_location": "repo:keys/release.pub",
+  "expected_release_manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "expected_external_root_verifier_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "retrieval_required": true,
+  "repo_only_public_key_allowed": false,
+  "self_minted_key_allowed": false,
+  "external_record_binds_verifier_hash": false,
+  "external_trust": "NONE",
+  "mutation_id": "external_root_self_minted_key_or_repo_only_pubkey"
+}

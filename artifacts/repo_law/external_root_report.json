@@ -1,0 +1,14 @@
+{
+  "protocol": "external-root-first",
+  "required_mutation": "external_root_self_minted_key_or_repo_only_pubkey",
+  "mutation_expected_result": "FAIL",
+  "final_legal_status_without_external_executor": "LOCAL_EXTERNAL_ROOT_PROTOCOL_EXTERNAL_TRUST_NONE",
+  "external_trust": "NONE",
+  "runtime": "BLOCKED",
+  "feed": "BLOCKED",
+  "signals": "BLOCKED",
+  "broker_write": "BLOCKED",
+  "production_ready": false,
+  "scalping_edge": "UNSUPPORTED",
+  "broker_regulatory_clearance": "UNVERIFIED_BLOCKED"
+}

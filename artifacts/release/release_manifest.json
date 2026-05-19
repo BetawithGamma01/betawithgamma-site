@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-05-19T17:24:44.263644+00:00",
+  "status": "LOCAL_EXTERNAL_ROOT_PROTOCOL_EXTERNAL_TRUST_NONE",
+  "external_trust": "NONE",
+  "files": {
+    "verifier/check_external_root_of_trust.py": "841a32de5625cb0d1608b1b68b74c31a862c788e50b12f070bad004bdc774229",
+    "external_anchor/EXTERNAL_ROOT_POINTER.json": "0064e7cbf4637d58bb2785523989bbf86d7ffd961e38e2a22dcb6d8af91aef09"
+  }
+}

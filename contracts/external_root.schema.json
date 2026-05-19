@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/contracts/external_root.schema.json",
+  "title": "External Root Pointer",
+  "type": "object",
+  "required": [
+    "external_record_type",
+    "external_record_url_or_id",
+    "external_record_identity",
+    "external_record_timestamp",
+    "public_key_external_location",
+    "expected_release_manifest_sha256",
+    "expected_external_root_verifier_sha256",
+    "retrieval_required",
+    "repo_only_public_key_allowed",
+    "self_minted_key_allowed"
+  ],
+  "properties": {
+    "external_record_type": {
+      "type": "string",
+      "enum": [
+        "SIGSTORE_REKOR",
+        "NOTARIZED_HASH_RECORD",
+        "SIGNED_GIT_TAG_WITH_EXTERNAL_KEY",
+        "PROTECTED_RELEASE_ATTESTATION",
+        "LOCAL_KEYPAIR",
+        "REPO_ONLY_PUBLIC_KEY",
+        "PLACEHOLDER_SIGNATURE",
+        "SELF_SIGNED_NO_EXTERNAL_IDENTITY",
+        "AGENT_GENERATED_KEY"
+      ]
+    },
+    "external_record_url_or_id": {"type": "string", "minLength": 1},
+    "external_record_identity": {"type": "string", "minLength": 1},
+    "external_record_timestamp": {"type": "string", "minLength": 1},
+    "public_key_external_location": {"type": "string", "minLength": 1},
+    "expected_release_manifest_sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+    "expected_external_root_verifier_sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+    "retrieval_required": {"const": true},
+    "repo_only_public_key_allowed": {"const": false},
+    "self_minted_key_allowed": {"const": false},
+    "trusted_executor": {
+      "type": ["object", "null"],
+      "properties": {
+        "name": {"type": "string"},
+        "identity": {"type": "string"},
+        "evidence_url_or_id": {"type": "string"}
+      },
+      "required": ["name", "identity", "evidence_url_or_id"]
+    }
+  },
+  "additionalProperties": true
+}
