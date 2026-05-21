@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>BetawithGamma | AI Fintech Analytics for Options & Market Risk</title>
+  <title>BetawithGamma | AI Fintech Analytics for Options, Volatility & Market Risk</title>
 
   <meta
     name="description"
@@ -39,48 +39,59 @@
 
   <style>
     :root {
-      --bg: #070b18;
-      --bg2: #0b1020;
-      --panel: rgba(255,255,255,0.065);
-      --panel-strong: rgba(255,255,255,0.095);
+      --bg: #050816;
+      --bg2: #080d1f;
+      --panel: rgba(255,255,255,0.07);
+      --panel2: rgba(255,255,255,0.105);
       --text: #f8fafc;
       --muted: #cbd5e1;
       --soft: #94a3b8;
-      --border: rgba(255,255,255,0.13);
-      --accent: #38bdf8;
-      --accent2: #a78bfa;
+      --border: rgba(255,255,255,0.14);
+      --cyan: #38bdf8;
+      --blue: #60a5fa;
+      --violet: #a78bfa;
+      --pink: #f472b6;
       --green: #22c55e;
       --yellow: #facc15;
       --red: #fb7185;
-      --shadow: 0 24px 90px rgba(0,0,0,0.34);
+      --orange: #fb923c;
+      --shadow: 0 24px 90px rgba(0,0,0,0.36);
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html {
-      scroll-behavior: smooth;
-    }
+    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-      background:
-        radial-gradient(circle at 15% 10%, rgba(56,189,248,0.22), transparent 28%),
-        radial-gradient(circle at 80% 0%, rgba(167,139,250,0.20), transparent 26%),
-        linear-gradient(180deg, #070b18 0%, #0b1020 45%, #050816 100%);
       color: var(--text);
+      background:
+        radial-gradient(circle at 10% 8%, rgba(56,189,248,0.25), transparent 26%),
+        radial-gradient(circle at 88% 0%, rgba(244,114,182,0.20), transparent 25%),
+        radial-gradient(circle at 60% 42%, rgba(167,139,250,0.13), transparent 34%),
+        linear-gradient(180deg, #050816 0%, #0b1020 48%, #050816 100%);
       line-height: 1.65;
+      overflow-x: hidden;
     }
 
-    a {
-      color: inherit;
-      text-decoration: none;
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: 54px 54px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.75), transparent 75%);
+      z-index: -1;
     }
+
+    a { color: inherit; text-decoration: none; }
 
     .container {
-      width: min(1160px, 92%);
+      width: min(1180px, 92%);
       margin: auto;
     }
 
@@ -88,7 +99,7 @@
       position: sticky;
       top: 0;
       z-index: 50;
-      background: rgba(7,11,24,0.82);
+      background: rgba(5,8,22,0.82);
       border-bottom: 1px solid var(--border);
       backdrop-filter: blur(18px);
     }
@@ -97,57 +108,56 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 0;
+      padding: 15px 0;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 11px;
       font-size: 22px;
-      font-weight: 850;
+      font-weight: 900;
       letter-spacing: -0.04em;
     }
 
     .logo {
-      width: 34px;
-      height: 34px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
       display: grid;
       place-items: center;
       color: #020617;
-      font-weight: 900;
+      font-weight: 950;
+      background: linear-gradient(135deg, var(--cyan), var(--violet), var(--pink));
+      box-shadow: 0 0 34px rgba(56,189,248,0.35);
     }
 
     .navlinks {
       display: flex;
-      gap: 22px;
+      gap: 20px;
+      align-items: center;
       color: var(--muted);
       font-size: 14px;
-      align-items: center;
     }
 
-    .navlinks a:hover {
-      color: var(--text);
-    }
+    .navlinks a:hover { color: var(--text); }
 
     .nav-cta {
-      padding: 9px 13px;
+      padding: 9px 14px;
       border: 1px solid var(--border);
       border-radius: 999px;
       color: var(--text);
-      background: rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.08);
     }
 
     .hero {
-      padding: 92px 0 64px;
+      padding: 92px 0 58px;
     }
 
     .hero-grid {
       display: grid;
       grid-template-columns: 1.08fr 0.92fr;
-      gap: 42px;
+      gap: 44px;
       align-items: center;
     }
 
@@ -156,7 +166,7 @@
       align-items: center;
       gap: 9px;
       border: 1px solid var(--border);
-      background: rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.07);
       padding: 8px 13px;
       border-radius: 999px;
       color: var(--muted);
@@ -173,17 +183,24 @@
     }
 
     h1 {
-      font-size: clamp(42px, 6.2vw, 78px);
-      line-height: 1.02;
-      letter-spacing: -0.065em;
+      font-size: clamp(42px, 6.4vw, 82px);
+      line-height: 1.01;
+      letter-spacing: -0.07em;
       margin: 0 0 24px;
-      max-width: 940px;
+      max-width: 980px;
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, var(--cyan), var(--violet), var(--pink), var(--orange));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
     }
 
     .hero-copy {
       font-size: 19px;
       color: var(--muted);
-      max-width: 780px;
+      max-width: 800px;
       margin: 0;
     }
 
@@ -200,33 +217,40 @@
       justify-content: center;
       gap: 9px;
       padding: 14px 20px;
-      border-radius: 14px;
-      font-weight: 760;
+      border-radius: 15px;
+      font-weight: 800;
       border: 1px solid var(--border);
-      transition: transform 0.2s ease, background 0.2s ease;
+      transition: 0.2s ease;
     }
 
-    .btn:hover {
-      transform: translateY(-2px);
-    }
+    .btn:hover { transform: translateY(-2px); }
 
     .btn.primary {
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      background: linear-gradient(135deg, var(--cyan), var(--violet));
       color: #020617;
       border: none;
+      box-shadow: 0 18px 50px rgba(56,189,248,0.24);
     }
 
     .btn.secondary {
-      background: rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.075);
       color: var(--text);
+    }
+
+    .small {
+      color: var(--soft);
+      font-size: 13px;
     }
 
     .mockup {
       border: 1px solid var(--border);
-      background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.035));
-      border-radius: 28px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.11), rgba(255,255,255,0.035)),
+        radial-gradient(circle at top right, rgba(56,189,248,0.18), transparent 35%);
+      border-radius: 30px;
       padding: 18px;
       box-shadow: var(--shadow);
+      transform: rotate(1deg);
     }
 
     .mockup-top {
@@ -239,77 +263,108 @@
       width: 10px;
       height: 10px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.26);
+      background: rgba(255,255,255,0.28);
     }
 
-    .terminal {
-      background: rgba(2,6,23,0.78);
+    .dashboard {
+      background: rgba(2,6,23,0.80);
       border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 20px;
+      border-radius: 22px;
+      padding: 19px;
     }
 
-    .terminal-row {
-      display: flex;
-      justify-content: space-between;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      padding: 12px 0;
+    .dash-title {
+      font-size: 15px;
       color: var(--muted);
-      font-size: 14px;
+      margin-bottom: 16px;
     }
 
-    .terminal-row:last-child {
-      border-bottom: 0;
+    .signal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 15px;
     }
 
-    .signal {
-      font-weight: 800;
-      color: var(--accent);
+    .signal-card {
+      padding: 14px;
+      border-radius: 17px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.11);
     }
 
-    section {
-      padding: 62px 0;
+    .signal-card strong {
+      display: block;
+      font-size: 18px;
+      color: var(--text);
     }
+
+    .signal-card span {
+      color: var(--soft);
+      font-size: 12.5px;
+    }
+
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.10);
+      margin-top: 8px;
+    }
+
+    .bar > div {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--cyan), var(--violet));
+    }
+
+    section { padding: 64px 0; }
 
     .section-title {
-      font-size: clamp(30px, 4vw, 44px);
-      line-height: 1.12;
-      letter-spacing: -0.045em;
+      font-size: clamp(30px, 4.2vw, 46px);
+      line-height: 1.1;
+      letter-spacing: -0.05em;
       margin: 0 0 14px;
     }
 
     .section-subtitle {
       color: var(--muted);
-      max-width: 780px;
+      max-width: 800px;
       margin: 0 0 30px;
       font-size: 17px;
     }
 
-    .grid {
-      display: grid;
-      gap: 18px;
-    }
-
-    .grid-3 {
-      grid-template-columns: repeat(3, 1fr);
-    }
-
-    .grid-2 {
-      grid-template-columns: repeat(2, 1fr);
-    }
+    .grid { display: grid; gap: 18px; }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
 
     .card {
       border: 1px solid var(--border);
-      background: linear-gradient(180deg, var(--panel), rgba(255,255,255,0.035));
-      border-radius: 24px;
+      background:
+        linear-gradient(180deg, var(--panel), rgba(255,255,255,0.035));
+      border-radius: 25px;
       padding: 25px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::after {
+      content: "";
+      position: absolute;
+      width: 130px;
+      height: 130px;
+      right: -70px;
+      top: -70px;
+      background: radial-gradient(circle, rgba(56,189,248,0.16), transparent 70%);
+      pointer-events: none;
     }
 
     .card h3 {
       margin: 0 0 10px;
       font-size: 21px;
-      letter-spacing: -0.025em;
+      letter-spacing: -0.026em;
     }
 
     .card p,
@@ -318,16 +373,18 @@
       font-size: 15.5px;
     }
 
-    .card p {
-      margin: 0;
-    }
+    .card p { margin: 0; }
 
-    .kpi {
-      font-size: 34px;
-      font-weight: 900;
-      color: var(--accent);
-      line-height: 1;
-      margin-bottom: 10px;
+    .icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 15px;
+      background: linear-gradient(135deg, rgba(56,189,248,0.22), rgba(167,139,250,0.20));
+      border: 1px solid var(--border);
+      font-size: 20px;
     }
 
     .label {
@@ -338,7 +395,7 @@
       background: rgba(56,189,248,0.13);
       color: #bae6fd;
       font-size: 13px;
-      font-weight: 780;
+      font-weight: 800;
     }
 
     .label.green {
@@ -351,33 +408,51 @@
       color: #fef08a;
     }
 
+    .label.red {
+      background: rgba(251,113,133,0.12);
+      color: #fecdd3;
+    }
+
     ul {
       margin: 0;
       padding-left: 19px;
     }
 
-    li {
-      margin-bottom: 9px;
-    }
+    li { margin-bottom: 9px; }
 
     .split {
       display: grid;
-      grid-template-columns: 0.86fr 1.14fr;
-      gap: 22px;
+      grid-template-columns: 0.85fr 1.15fr;
+      gap: 24px;
       align-items: start;
     }
 
     .problem-list {
       display: grid;
-      gap: 12px;
+      gap: 13px;
     }
 
     .problem {
-      padding: 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.055);
+      padding: 17px;
+      border-radius: 19px;
+      background: rgba(255,255,255,0.06);
       border: 1px solid var(--border);
       color: var(--muted);
+    }
+
+    .kpi {
+      font-size: 34px;
+      font-weight: 950;
+      color: var(--cyan);
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+
+    .highlight {
+      background:
+        radial-gradient(circle at top left, rgba(56,189,248,0.20), transparent 35%),
+        radial-gradient(circle at bottom right, rgba(244,114,182,0.16), transparent 36%),
+        linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.04));
     }
 
     .timeline {
@@ -387,26 +462,49 @@
 
     .step {
       display: grid;
-      grid-template-columns: 42px 1fr;
+      grid-template-columns: 44px 1fr;
       gap: 14px;
       align-items: start;
     }
 
     .num {
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
+      width: 44px;
+      height: 44px;
+      border-radius: 15px;
       display: grid;
       place-items: center;
       background: rgba(56,189,248,0.14);
-      color: var(--accent);
-      font-weight: 900;
+      color: var(--cyan);
+      font-weight: 950;
       border: 1px solid var(--border);
     }
 
     .disclaimer {
       border-left: 4px solid var(--red);
       background: rgba(251,113,133,0.085);
+    }
+
+    .faq {
+      display: grid;
+      gap: 14px;
+    }
+
+    details {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      border-radius: 20px;
+      padding: 18px 20px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    details p {
+      color: var(--muted);
+      margin-bottom: 0;
     }
 
     .footer {
@@ -429,26 +527,20 @@
       flex-wrap: wrap;
     }
 
-    .small {
-      color: var(--soft);
-      font-size: 13px;
-    }
-
-    @media (max-width: 920px) {
+    @media (max-width: 980px) {
       .hero-grid,
       .split,
+      .grid-4,
       .grid-3,
       .grid-2 {
         grid-template-columns: 1fr;
       }
 
-      .hero {
-        padding: 58px 0 42px;
-      }
+      .hero { padding: 58px 0 42px; }
 
-      .navlinks {
-        display: none;
-      }
+      .navlinks { display: none; }
+
+      .mockup { transform: none; }
     }
   </style>
 </head>
@@ -464,9 +556,10 @@
 
         <div class="navlinks">
           <a href="#product">Product</a>
-          <a href="#traction">Progress</a>
+          <a href="#progress">Progress</a>
           <a href="#cloud">Cloud Plan</a>
           <a href="#roadmap">Roadmap</a>
+          <a href="#faq">FAQ</a>
           <a class="nav-cta" href="#contact">Contact</a>
         </div>
       </nav>
@@ -479,14 +572,16 @@
         <div>
           <div class="badge">
             <span class="dot"></span>
-            AI-first fintech analytics startup
+            AI-first fintech analytics startup · India
           </div>
 
-          <h1>Explainable market intelligence for options, volatility, and risk.</h1>
+          <h1>
+            Explainable <span class="gradient-text">market intelligence</span> for options, volatility, and risk.
+          </h1>
 
           <p class="hero-copy">
             BetawithGamma is building an AI-assisted analytics platform for Indian derivatives and options-market research.
-            The platform converts market data, option-chain behavior, volatility context, and risk signals into structured dashboards for research, education, and decision support.
+            The platform converts option-chain behavior, volatility context, market structure, and risk signals into structured dashboards for research, education, and decision support.
           </p>
 
           <div class="cta">
@@ -494,12 +589,12 @@
               Contact Founder
             </a>
             <a class="btn secondary" href="#cloud">
-              View Cloud Use Case
+              View Google Cloud Use Case
             </a>
           </div>
 
           <p class="small" style="margin-top:18px;">
-            Product focus: analytics, research support, education, and risk interpretation. No guaranteed-profit claims.
+            Scope boundary: analytics, research support, education, and risk interpretation. No guaranteed-profit claims.
           </p>
         </div>
 
@@ -510,27 +605,68 @@
             <span class="mockup-dot"></span>
           </div>
 
-          <div class="terminal">
-            <div class="terminal-row">
-              <span>Option-chain pressure</span>
-              <span class="signal">Structured</span>
+          <div class="dashboard">
+            <div class="dash-title">BetawithGamma research dashboard preview</div>
+
+            <div class="signal-grid">
+              <div class="signal-card">
+                <strong>Option Chain</strong>
+                <span>Pressure mapping</span>
+                <div class="bar"><div style="width:76%"></div></div>
+              </div>
+
+              <div class="signal-card">
+                <strong>Volatility</strong>
+                <span>Context engine</span>
+                <div class="bar"><div style="width:68%"></div></div>
+              </div>
+
+              <div class="signal-card">
+                <strong>Risk View</strong>
+                <span>Evidence-first</span>
+                <div class="bar"><div style="width:84%"></div></div>
+              </div>
+
+              <div class="signal-card">
+                <strong>AI Layer</strong>
+                <span>Explanation only</span>
+                <div class="bar"><div style="width:72%"></div></div>
+              </div>
             </div>
-            <div class="terminal-row">
-              <span>Volatility interpretation</span>
-              <span class="signal">AI-assisted</span>
+
+            <div class="problem">
+              Output rule: insight must preserve source, assumption, confidence, risk, and falsifier before trust.
             </div>
-            <div class="terminal-row">
-              <span>Risk visibility</span>
-              <span class="signal">Priority</span>
-            </div>
-            <div class="terminal-row">
-              <span>Execution claims</span>
-              <span style="color:var(--red);font-weight:800;">Blocked</span>
-            </div>
-            <div class="terminal-row">
-              <span>Cloud migration</span>
-              <span style="color:var(--green);font-weight:800;">In progress</span>
-            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="positioning">
+      <div class="container">
+        <div class="grid grid-4">
+          <div class="card">
+            <div class="kpi">AI</div>
+            <h3>Generative analytics</h3>
+            <p>AI-assisted explanation of financial context, market summaries, risk zones, and learning support.</p>
+          </div>
+
+          <div class="card">
+            <div class="kpi">βΓ</div>
+            <h3>Options focus</h3>
+            <p>Built around derivatives, option-chain interpretation, volatility behavior, and risk-first thinking.</p>
+          </div>
+
+          <div class="card">
+            <div class="kpi">0</div>
+            <h3>No profit claims</h3>
+            <p>The product is positioned as analytics and research support, not a guaranteed-return trading engine.</p>
+          </div>
+
+          <div class="card">
+            <div class="kpi">GCP</div>
+            <h3>Cloud migration</h3>
+            <p>Moving from local prototype to scalable backend, AI integration, logs, monitoring, and analytics storage.</p>
           </div>
         </div>
       </div>
@@ -539,81 +675,109 @@
     <section id="product">
       <div class="container split">
         <div>
-          <h2 class="section-title">The problem</h2>
+          <h2 class="section-title">The market problem</h2>
           <p class="section-subtitle">
-            Active market participants face fragmented data, noisy indicators, weak risk visibility, and excessive dependence on unverified trading claims.
+            Retail traders, learners, and independent researchers face noisy data, fragmented tools, weak risk visibility, and overconfident signal claims.
           </p>
         </div>
 
         <div class="problem-list">
           <div class="problem">Option-chain data is dense, fast-moving, and difficult to interpret without structure.</div>
-          <div class="problem">Retail traders often see signals without evidence, confidence boundaries, or risk context.</div>
-          <div class="problem">AI tools explain markets poorly when they are not connected to disciplined data and validation workflows.</div>
+          <div class="problem">Most dashboards show indicators but hide evidence quality, uncertainty, and failure cases.</div>
+          <div class="problem">AI explanations become dangerous when disconnected from data discipline and risk boundaries.</div>
+          <div class="problem">Trading education often teaches formulas but not live-market ambiguity, volatility, and risk control.</div>
         </div>
       </div>
     </section>
 
-    <section>
+    <section id="solution">
       <div class="container">
-        <h2 class="section-title">Product direction</h2>
+        <h2 class="section-title">What BetawithGamma is building</h2>
         <p class="section-subtitle">
-          BetawithGamma is designed as a research and analytics layer, not a black-box profit engine.
+          A research-grade analytics layer for market interpretation, not a black-box profit bot.
         </p>
 
         <div class="grid grid-3">
           <div class="card">
+            <div class="icon">📊</div>
             <h3>Option-chain intelligence</h3>
             <p>
-              Analytics for option-chain behavior, volatility shifts, liquidity context, and derivatives-market structure.
+              Tools for monitoring option-chain behavior, volatility shifts, liquidity context, derivatives-market structure, and risk concentration.
             </p>
           </div>
 
           <div class="card">
+            <div class="icon">🧠</div>
             <h3>AI finance analyzer</h3>
             <p>
-              Explanation layer for market summaries, scenario interpretation, risk context, and financial learning support.
+              AI-assisted explanation layer for market summaries, scenario interpretation, financial learning, and structured research notes.
             </p>
           </div>
 
           <div class="card">
+            <div class="icon">🛡️</div>
             <h3>Risk-first dashboards</h3>
             <p>
-              Interfaces that emphasize uncertainty, evidence quality, risk zones, and decision-support boundaries.
+              Interfaces designed to show uncertainty, evidence quality, confidence boundaries, assumptions, and interpretation limits.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="icon">⚡</div>
+            <h3>Real-time orientation</h3>
+            <p>
+              Architecture planned for live data workflows, streaming updates, latency visibility, and cloud-native backend services.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="icon">🔍</div>
+            <h3>Evidence discipline</h3>
+            <p>
+              The platform direction emphasizes source, freshness, replay, assumptions, confidence, contradiction, and falsifier tracking.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="icon">🎓</div>
+            <h3>Education layer</h3>
+            <p>
+              Helps learners understand derivatives context, volatility behavior, market risk, and decision-support limits.
             </p>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="traction">
+    <section id="progress">
       <div class="container">
         <h2 class="section-title">Current progress</h2>
         <p class="section-subtitle">
-          The product is moving from local prototype to cloud-native web platform.
+          The current state is founder-built prototype progress. No fake user, revenue, or production-readiness claims.
         </p>
 
         <div class="grid grid-3">
-          <div class="card">
+          <div class="card highlight">
             <span class="label green">Built</span>
-            <h3>Desktop prototype</h3>
+            <h3>Desktop analytics prototype</h3>
             <p>
-              Python/Tkinter analytics prototype built for local derivatives and market-data workflows.
+              Python/Tkinter prototype built for local market-data workflows, option analytics exploration, and derivatives research.
             </p>
           </div>
 
-          <div class="card">
+          <div class="card highlight">
             <span class="label green">Built</span>
             <h3>AI finance analyzer</h3>
             <p>
-              Initial AI module built for structured financial explanation, research support, and interpretation workflows.
+              Initial AI module prepared for structured financial explanation, market summary generation, and research support.
             </p>
           </div>
 
-          <div class="card">
+          <div class="card highlight">
             <span class="label yellow">In progress</span>
-            <h3>Web application</h3>
+            <h3>Web application migration</h3>
             <p>
-              Migration toward a browser-based dashboard with backend APIs, data storage, monitoring, and AI integration.
+              Browser-based dashboard and backend architecture planned for deployment, monitoring, storage, and AI integration.
             </p>
           </div>
         </div>
@@ -624,29 +788,33 @@
       <div class="container">
         <h2 class="section-title">Google Cloud use case</h2>
         <p class="section-subtitle">
-          Cloud credits would accelerate backend deployment, analytics storage, AI explanation layers, observability, and secure configuration.
+          Cloud credits would accelerate the transition from local prototype to reliable cloud-native MVP.
         </p>
 
         <div class="grid grid-2">
           <div class="card">
+            <div class="icon">☁️</div>
             <h3>Infrastructure plan</h3>
             <ul>
               <li>Cloud Run or Compute services for backend APIs</li>
               <li>Firebase Hosting or static hosting for frontend delivery</li>
-              <li>Cloud SQL or Firestore for application and analytics data</li>
-              <li>Secret Manager for secure API and credential management</li>
+              <li>Cloud SQL or Firestore for user, session, and analytics data</li>
+              <li>Secret Manager for secure API and credential handling</li>
               <li>Cloud Logging and Monitoring for reliability tracking</li>
+              <li>Pub/Sub-style event flow for future real-time analytics pipelines</li>
             </ul>
           </div>
 
           <div class="card">
+            <div class="icon">🤖</div>
             <h3>AI and analytics plan</h3>
             <ul>
-              <li>Gemini / Vertex AI for market explanation and summarization layers</li>
+              <li>Gemini / Vertex AI for explanation and summarization layers</li>
               <li>BigQuery for historical analytics and evaluation datasets</li>
               <li>Model-evaluation workflows for evidence scoring</li>
               <li>Audit logs for AI output review and safety boundaries</li>
-              <li>Latency and reliability measurement before production scaling</li>
+              <li>Latency, freshness, and reliability measurement before scaling</li>
+              <li>Responsible AI boundaries for non-advisory market explanation</li>
             </ul>
           </div>
         </div>
@@ -655,7 +823,7 @@
 
     <section id="moat">
       <div class="container">
-        <h2 class="section-title">Why BetawithGamma is different</h2>
+        <h2 class="section-title">Why this is different</h2>
         <p class="section-subtitle">
           The platform is built around evidence, risk interpretation, and disciplined analytics rather than hype-driven signal claims.
         </p>
@@ -663,20 +831,20 @@
         <div class="grid grid-3">
           <div class="card">
             <div class="kpi">01</div>
-            <h3>Evidence-first design</h3>
-            <p>Every insight should preserve its source, assumptions, confidence, and falsifier before being trusted.</p>
+            <h3>Evidence-first outputs</h3>
+            <p>Every insight should preserve source, assumptions, confidence, risk, and falsifier before it is trusted.</p>
           </div>
 
           <div class="card">
             <div class="kpi">02</div>
             <h3>AI with boundaries</h3>
-            <p>AI explains and summarizes; it does not replace risk control, user judgment, or compliance boundaries.</p>
+            <p>AI explains and summarizes; it does not replace user judgment, compliance discipline, or risk control.</p>
           </div>
 
           <div class="card">
             <div class="kpi">03</div>
             <h3>Research before execution</h3>
-            <p>The product roadmap separates analytics and research from any future trading automation or broker-write capability.</p>
+            <p>The roadmap separates analytics and research from broker-write systems or automated execution.</p>
           </div>
         </div>
       </div>
@@ -684,9 +852,9 @@
 
     <section id="roadmap">
       <div class="container">
-        <h2 class="section-title">Roadmap</h2>
+        <h2 class="section-title">12-month roadmap</h2>
         <p class="section-subtitle">
-          The next phase focuses on building a credible cloud-native MVP and proving user value.
+          The next phase is focused on credible MVP delivery, cloud infrastructure, feedback capture, and measurable reliability.
         </p>
 
         <div class="timeline">
@@ -694,7 +862,7 @@
             <div class="num">1</div>
             <div class="card">
               <h3>Public web dashboard prototype</h3>
-              <p>Launch a simple web interface for analytics views, research summaries, and risk visualization.</p>
+              <p>Launch a simple dashboard for analytics views, market summaries, and risk visualization.</p>
             </div>
           </div>
 
@@ -702,7 +870,7 @@
             <div class="num">2</div>
             <div class="card">
               <h3>Backend and data foundation</h3>
-              <p>Build secure APIs, structured data storage, monitoring, logs, and deployment workflows.</p>
+              <p>Build secure APIs, structured storage, monitoring, logs, deployment workflows, and environment separation.</p>
             </div>
           </div>
 
@@ -710,16 +878,50 @@
             <div class="num">3</div>
             <div class="card">
               <h3>AI explanation layer</h3>
-              <p>Add controlled AI summaries for market context, option-chain interpretation, and risk explanation.</p>
+              <p>Add controlled AI summaries for market context, option-chain interpretation, volatility explanation, and risk notes.</p>
             </div>
           </div>
 
           <div class="step">
             <div class="num">4</div>
             <div class="card">
-              <h3>User feedback and validation</h3>
-              <p>Collect structured user feedback before making traction, revenue, or monetization claims.</p>
+              <h3>Feedback and validation</h3>
+              <p>Collect structured feedback from early users before making traction, monetization, or product-market-fit claims.</p>
             </div>
+          </div>
+
+          <div class="step">
+            <div class="num">5</div>
+            <div class="card">
+              <h3>Reliability and evidence gates</h3>
+              <p>Measure uptime, latency, data freshness, AI output quality, and user workflow completion.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="funding">
+      <div class="container">
+        <h2 class="section-title">Why funding or cloud credits matter</h2>
+        <p class="section-subtitle">
+          The bottleneck is not a static website. The bottleneck is cloud infrastructure, reliable data systems, AI evaluation, and secure deployment.
+        </p>
+
+        <div class="grid grid-3">
+          <div class="card">
+            <h3>Build faster</h3>
+            <p>Move prototype workflows into a deployable web platform with backend APIs, secure configuration, and monitored services.</p>
+          </div>
+
+          <div class="card">
+            <h3>Evaluate better</h3>
+            <p>Create datasets, logs, model-evaluation reports, and repeatable analytics workflows before scaling claims.</p>
+          </div>
+
+          <div class="card">
+            <h3>Serve users safely</h3>
+            <p>Deliver educational and analytical market context while preserving disclaimers, auditability, and non-advisory boundaries.</p>
           </div>
         </div>
       </div>
@@ -730,4 +932,100 @@
         <div class="card disclaimer">
           <h2 class="section-title">Important disclaimer</h2>
           <p>
-            BetawithGamma provides analytics, research support, education, and risk interpretation. It does not provide guaranteed-profit claims, personalized investment advice, regulated investment advisory services, or broker-execution services. User
+            BetawithGamma provides analytics, research support, education, and risk interpretation. It does not provide guaranteed-profit claims, personalized investment advice, regulated investment advisory services, or broker-execution services. Users are responsible for their own financial decisions.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="container">
+        <h2 class="section-title">FAQ</h2>
+        <p class="section-subtitle">
+          Clear boundaries for reviewers, cloud partners, and early users.
+        </p>
+
+        <div class="faq">
+          <details>
+            <summary>Is BetawithGamma a trading bot?</summary>
+            <p>No. The current positioning is analytics, research support, education, and risk interpretation. It is not presented as automated execution or guaranteed-profit software.</p>
+          </details>
+
+          <details>
+            <summary>Is the product already production-ready?</summary>
+            <p>No. Current state is prototype and web-migration stage. The goal is to build a reliable cloud-native MVP with monitoring, secure backend services, and AI explanation workflows.</p>
+          </details>
+
+          <details>
+            <summary>How does AI fit into the product?</summary>
+            <p>AI is used for explanation, summarization, structured market notes, risk interpretation, and educational support. It should operate within strict boundaries and should not be treated as financial advice.</p>
+          </details>
+
+          <details>
+            <summary>Why use Google Cloud?</summary>
+            <p>The planned cloud stack needs scalable APIs, hosting, secure secrets, analytics storage, AI integration, logs, monitoring, and future evaluation datasets.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact">
+      <div class="container">
+        <h2 class="section-title">Contact</h2>
+        <p class="section-subtitle">
+          For startup program verification, cloud partnership, product review, or early user feedback.
+        </p>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>Founder</h3>
+            <p>
+              Lalan Kumar Mishra<br />
+              Founder & Lead Software Engineer<br />
+              Bengaluru, India
+            </p>
+          </div>
+
+          <div class="card">
+            <h3>Business email</h3>
+            <p>
+              <a href="mailto:lalan10mishra@betawithgamma.com">lalan10mishra@betawithgamma.com</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="privacy">
+      <div class="container">
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>Privacy</h3>
+            <p>
+              BetawithGamma aims to collect only necessary product, contact, and usage information for product development, communication, analytics, and service improvement. Sensitive credentials and financial data should be handled through secure systems only.
+            </p>
+          </div>
+
+          <div class="card">
+            <h3>Terms</h3>
+            <p>
+              Information on this website is provided for product description, research, and educational context. It must not be treated as investment advice, trading instruction, broker execution, or a guarantee of financial outcome.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-row">
+      <div>© 2026 BetawithGamma. All rights reserved.</div>
+      <div class="footer-links">
+        <a href="#privacy">Privacy</a>
+        <a href="#privacy">Terms</a>
+        <a href="#contact">Contact</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
