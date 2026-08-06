@@ -1,0 +1,224 @@
+name: FYERS v1.4 Secure Android Build
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secure-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select one-time receiver run
+        id: receiver
+        shell: bash
+        run: |
+          if test -f secure_payload/READY.json; then
+            echo 'active=false' >> "$GITHUB_OUTPUT"
+            echo 'Encrypted payload already committed; this follow-up run is intentionally inert.'
+          else
+            echo 'active=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate one-time inbound RSA key
+        if: steps.receiver.outputs.active == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -out /tmp/fyers-inbound-private.pem
+          openssl pkey -in /tmp/fyers-inbound-private.pem -pubout -out /tmp/fyers-inbound-public.pem
+          sha256sum /tmp/fyers-inbound-public.pem > /tmp/fyers-inbound-public.pem.sha256
+
+      - name: Publish one-time inbound public key
+        if: steps.receiver.outputs.active == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fyers-v140-inbound-public-key-${{ github.run_id }}
+          path: |
+            /tmp/fyers-inbound-public.pem
+            /tmp/fyers-inbound-public.pem.sha256
+          retention-days: 1
+
+      - name: Wait for encrypted payload and decrypt in runner memory
+        if: steps.receiver.outputs.active == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          api='https://api.github.com/repos/BetawithGamma01/betawithgamma-site/contents'
+          auth=(-H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json')
+          fetch_decoded() {
+            local path="$1"
+            curl -fsSL "${auth[@]}" "$api/$path?ref=$HEAD_REF" | jq -r '.content' | tr -d '\n' | base64 -d
+          }
+          found=0
+          for _ in $(seq 1 240); do
+            code=$(curl -sS -o /tmp/ready-api.json -w '%{http_code}' "${auth[@]}" "$api/secure_payload/READY.json?ref=$HEAD_REF")
+            if test "$code" = 200; then found=1; break; fi
+            sleep 5
+          done
+          test "$found" = 1 || { echo 'ENCRYPTED_PAYLOAD_TIMEOUT'; exit 31; }
+          jq -r '.content' /tmp/ready-api.json | tr -d '\n' | base64 -d > /tmp/READY.json
+          jq -e '.schema == "fycap-secure-build-input-v1"' /tmp/READY.json >/dev/null
+          : > /tmp/fyers-source.enc
+          while IFS= read -r part; do
+            fetch_decoded "secure_payload/$part" | base64 -d >> /tmp/fyers-source.enc
+          done < <(jq -r '.part_names[]' /tmp/READY.json)
+          fetch_decoded secure_payload/source-key.b64 | base64 -d > /tmp/source-key.enc
+          fetch_decoded secure_payload/return-public.pem > /tmp/return-public.pem
+          test "$(sha256sum /tmp/fyers-source.enc | awk '{print $1}')" = "$(jq -r .ciphertext_sha256 /tmp/READY.json)"
+          test "$(sha256sum /tmp/source-key.enc | awk '{print $1}')" = "$(jq -r .wrapped_key_sha256 /tmp/READY.json)"
+          test "$(sha256sum /tmp/return-public.pem | awk '{print $1}')" = "$(jq -r .return_public_key_sha256 /tmp/READY.json)"
+          openssl pkeyutl -decrypt -inkey /tmp/fyers-inbound-private.pem -in /tmp/source-key.enc -out /tmp/source-pass.txt \
+            -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 250000 \
+            -in /tmp/fyers-source.enc -out /tmp/FyersCapture-v1.4.0-live-ws-SOURCE.tar.gz \
+            -pass file:/tmp/source-pass.txt
+          test "$(sha256sum /tmp/FyersCapture-v1.4.0-live-ws-SOURCE.tar.gz | awk '{print $1}')" = "$(jq -r .source_tar_sha256 /tmp/READY.json)"
+          mkdir -p /tmp/fyers-v140
+          tar -xzf /tmp/FyersCapture-v1.4.0-live-ws-SOURCE.tar.gz -C /tmp/fyers-v140
+          FYERS_PROJECT=/tmp/fyers-v140/FyersCapture-v1.4.0-live-ws
+          test -f "$FYERS_PROJECT/app/src/main/java/com/lalan/fyerscapture/net/FyersWsClient.java"
+          grep -q 'versionCode = 50' "$FYERS_PROJECT/app/build.gradle.kts"
+          grep -q 'versionName = "1.4.0-live-ws"' "$FYERS_PROJECT/app/build.gradle.kts"
+          echo "FYERS_PROJECT=$FYERS_PROJECT" >> "$GITHUB_ENV"
+          shred -u /tmp/source-pass.txt /tmp/source-key.enc /tmp/fyers-inbound-private.pem || true
+
+      - uses: actions/setup-java@v5
+        if: steps.receiver.outputs.active == 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+        if: steps.receiver.outputs.active == 'true'
+
+      - name: Install Android API 35
+        if: steps.receiver.outputs.active == 'true'
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.receiver.outputs.active == 'true'
+        with:
+          gradle-version: '8.9'
+
+      - name: Source AOK, compile, unit tests, lint and APK assembly
+        if: steps.receiver.outputs.active == 'true'
+        working-directory: ${{ env.FYERS_PROJECT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/aok.py | tee /tmp/source-aok.txt
+          python3 - <<'PY'
+          import json
+          t=json.load(open('evidence/AOK_MACHINE_TRUTH.json'))
+          assert t['source_aok']=='PASS'
+          assert t['static_audit_checks']==54
+          assert t['core_tests']==24
+          assert t['cross_language_fixture']=='PASS'
+          assert t['ws_journal_cross_language_fixture']=='PASS'
+          assert t['android_root_stub_compile']=='PASS'
+          PY
+          SOURCE_TREE_SHA256="$(python3 tools/source_tree_hash.py)"
+          test "$SOURCE_TREE_SHA256" = '33b3b7f6b441d0e7679842f18e32d0189c73f8ca8bcf128a3cf694cf1f57d278'
+          BUILD_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "SOURCE_TREE_SHA256=$SOURCE_TREE_SHA256" >> "$GITHUB_ENV"
+          echo "BUILD_UTC=$BUILD_UTC" >> "$GITHUB_ENV"
+          set -o pipefail
+          gradle --no-daemon --stacktrace clean :core:selfTest :app:testDebugUnitTest :app:lintDebug :app:assembleDebug \
+            -PBUILD_COMMIT="$GITHUB_SHA" -PSOURCE_TREE_SHA256="$SOURCE_TREE_SHA256" -PBUILD_UTC="$BUILD_UTC" \
+            2>&1 | tee /tmp/gradle-build.log
+
+      - name: Enforce semantic Android tests and zero lint
+        if: steps.receiver.outputs.active == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, xml.etree.ElementTree as ET
+          from pathlib import Path
+          p=Path(os.environ['FYERS_PROJECT'])
+          suites=[ET.parse(x).getroot() for x in sorted((p/'app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))]
+          assert suites, 'JUnit XML missing'
+          result=tuple(sum(int(s.attrib.get(k,'0')) for s in suites) for k in ('tests','failures','errors','skipped'))
+          print('ANDROID_TESTS',result)
+          assert result==(29,0,0,0), result
+          names=[c.attrib.get('name','') for s in suites for c in s.findall('testcase')]
+          required=['jwtClaimsDecodeHsmKeyAndExpiry','authFrameMatchesIndependentReference','subscriptionFrameMatchesIndependentReferenceIncludingSdkDeclaredLength','subscriptionSuccessUsesOfficialLittleEndianMarkerLength','indexSnapshotAndFullDeltaDecodeOfficialLayout','symbolAndDepthSnapshotsDecode','rejectsDeltaBeforeSnapshot','mapsIndexAndOptionSymbolUpdates','capturedResponse24570Parses','capturedResponse24624Parses','fullCapturedLiveResponseBindsExpiryAndRoster','journalWritesMonotonicIntegrityRecordsBeforeCallback']
+          missing=[x for x in required if not any(x in n for n in names)]
+          assert not missing, missing
+          Path('/tmp/android-test-names.txt').write_text('\n'.join(sorted(names))+'\n')
+          issues=ET.parse(p/'app/build/reports/lint-results-debug.xml').getroot().findall('issue')
+          for i in issues: print(i.attrib)
+          assert not issues, f'LINT_FINDINGS={len(issues)}'
+          print('LINT_FINDINGS=0')
+          PY
+
+      - name: Verify APK and prepare confidential release bundle
+        if: steps.receiver.outputs.active == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=/tmp/fyers-v140-release
+          mkdir -p "$OUT"
+          APK="$FYERS_PROJECT/app/build/outputs/apk/debug/app-debug.apk"
+          unzip -t "$APK" | tee /tmp/apk-zip-test.txt
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 -v 4 "$APK" | tee /tmp/zipalign-verification.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee /tmp/apksigner-verification.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | tee /tmp/apk-badging.txt
+          grep -q "package: name='com.lalan.fyerscapture.debug' versionCode='50' versionName='1.4.0-live-ws-debug'" /tmp/apk-badging.txt
+          grep -q "sdkVersion:'26'" /tmp/apk-badging.txt
+          grep -q "targetSdkVersion:'34'" /tmp/apk-badging.txt
+          sha256sum "$APK" | tee /tmp/apk-sha256.txt
+          cp "$APK" "$OUT/FyersCapture-v1.4.0-live-ws-debug.apk"
+          cp /tmp/source-aok.txt /tmp/gradle-build.log /tmp/android-test-names.txt /tmp/apk-zip-test.txt /tmp/zipalign-verification.txt /tmp/apksigner-verification.txt /tmp/apk-badging.txt /tmp/apk-sha256.txt "$OUT/"
+          cp "$FYERS_PROJECT/app/build/reports/lint-results-debug.xml" "$FYERS_PROJECT/app/build/reports/lint-results-debug.html" "$OUT/"
+          cp -r "$FYERS_PROJECT/app/build/test-results/testDebugUnitTest" "$OUT/android-test-results"
+          cp "$FYERS_PROJECT/SOURCE_MANIFEST.json" "$FYERS_PROJECT/evidence/AOK_MACHINE_TRUTH.json" "$OUT/"
+          cd /tmp/fyers-v140
+          zip -qr "$OUT/FyersCapture-v1.4.0-live-ws-SOURCE.zip" FyersCapture-v1.4.0-live-ws -x '*/build/*' '*/evidence/*' '*/.gradle/*' '*/.idea/*' '*/__pycache__/*' '*.pyc'
+          export OUT APK_SHA256="$(sha256sum "$OUT/FyersCapture-v1.4.0-live-ws-debug.apk"|awk '{print $1}')" SOURCE_ZIP_SHA256="$(sha256sum "$OUT/FyersCapture-v1.4.0-live-ws-SOURCE.zip"|awk '{print $1}')"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          o=Path(os.environ['OUT'])
+          t={'artifact':'FyersCapture-v1.4.0-live-ws','build_status':'APK_BUILD_AOK','architecture':'REST_CONTROL_PLANE_PLUS_BINARY_HSM_WEBSOCKET_DATA_PLANE','static_controls_passed':54,'core_falsifiers_passed':24,'android_unit_tests':29,'android_unit_test_failures':0,'lint_findings':0,'apk_signature_verify':True,'zipalign_pass':True,'package':'com.lalan.fyerscapture.debug','version_code':50,'version_name':'1.4.0-live-ws-debug','min_sdk':26,'target_sdk':34,'compile_sdk':35,'evidence_schema':'fycap-seal-v4+fycap-ws-journal-v1','source_tree_sha256':os.environ['SOURCE_TREE_SHA256'],'source_zip_sha256':os.environ['SOURCE_ZIP_SHA256'],'apk_sha256':os.environ['APK_SHA256'],'physical_device_install':'NOT_RUN','live_fyers_socket_handshake':'NOT_RUN','live_topic_confirmation':'NOT_RUN','live_full_session':'BLOCKED_PENDING_DEVICE_EVIDENCE','true_exchange_tbt_claim':'NOT_CLAIMED'}
+          (o/'FyersCapture-v1.4.0-live-ws-MACHINE_TRUTH.json').write_text(json.dumps(t,indent=2)+'\n')
+          p={'upstream':'fyers-apiv3','version':'3.1.15','wheel_sha256':'759fbc6fb383275ae8cb09bc613f72098c3c80b110550baaae2651e6c73d3493','websocket_endpoint':'wss://socket.fyers.in/hsm/v1-5/prod','token_map_endpoint':'https://api-t1.fyers.in/data/symbol-token','claim_boundary':'broker-pushed FYERS HSM stream; not exchange-native TBT'}
+          (o/'OFFICIAL_FYERS_PROTOCOL_PROVENANCE.json').write_text(json.dumps(p,indent=2)+'\n')
+          PY
+          cd "$OUT" && sha256sum $(find . -maxdepth 1 -type f ! -name ARTIFACT_SHA256.txt -printf '%f\n'|sort) > ARTIFACT_SHA256.txt
+          cd /tmp && zip -qr /tmp/FyersCapture-v1.4.0-live-ws-RELEASE.zip fyers-v140-release
+          umask 077
+          openssl rand -hex 32 > /tmp/release-pass.txt
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 250000 -in /tmp/FyersCapture-v1.4.0-live-ws-RELEASE.zip -out /tmp/FyersCapture-v1.4.0-live-ws-RELEASE.enc -pass file:/tmp/release-pass.txt
+          openssl pkeyutl -encrypt -pubin -inkey /tmp/return-public.pem -in /tmp/release-pass.txt -out /tmp/FyersCapture-v1.4.0-live-ws-RELEASE-KEY.enc -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          h=lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+          m={'schema':'fycap-secure-build-output-v1','ciphertext_sha256':h('/tmp/FyersCapture-v1.4.0-live-ws-RELEASE.enc'),'wrapped_key_sha256':h('/tmp/FyersCapture-v1.4.0-live-ws-RELEASE-KEY.enc')}
+          Path('/tmp/FyersCapture-v1.4.0-live-ws-RELEASE-MANIFEST.json').write_text(json.dumps(m,indent=2)+'\n')
+          PY
+          shred -u /tmp/release-pass.txt || true
+          rm -f /tmp/FyersCapture-v1.4.0-live-ws-RELEASE.zip
+
+      - name: Upload encrypted release only
+        if: steps.receiver.outputs.active == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: FyersCapture-v1.4.0-live-ws-encrypted-release
+          path: |
+            /tmp/FyersCapture-v1.4.0-live-ws-RELEASE.enc
+            /tmp/FyersCapture-v1.4.0-live-ws-RELEASE-KEY.enc
+            /tmp/FyersCapture-v1.4.0-live-ws-RELEASE-MANIFEST.json
+          retention-days: 1
