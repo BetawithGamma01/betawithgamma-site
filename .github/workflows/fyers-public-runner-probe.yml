@@ -1,0 +1,29 @@
+name: FYERS Public Runner and Private Read Probe
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove public runner
+        run: |
+          set -euo pipefail
+          uname -a
+          java -version
+          echo FYERS_PUBLIC_RUNNER_PASS
+      - name: Probe scoped token against private source repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          code=$(curl -sS -o /tmp/private-probe.json -w '%{http_code}' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            https://api.github.com/repos/BetawithGamma01/trading-workstation/contents/ci/fyers-apk-v140/source.part000?ref=build/fyers-apk-v140-clean-20260806)
+          echo "PRIVATE_REPO_HTTP_STATUS=$code"
+          test "$code" = 200
