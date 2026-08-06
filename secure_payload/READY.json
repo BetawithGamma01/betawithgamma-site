@@ -1,0 +1,22 @@
+{
+  "schema": "fycap-secure-build-input-v1",
+  "run_id": 31095243541,
+  "part_names": [
+    "source.part000.b64",
+    "source.part001.b64",
+    "source.part002.b64",
+    "source.part003.b64",
+    "source.part004.b64",
+    "source.part005.b64",
+    "source.part006.b64",
+    "source.part007.b64",
+    "source.part008.b64",
+    "source.part009.b64",
+    "source.part010.b64"
+  ],
+  "ciphertext_sha256": "40a643df0b726619a3d367524e4b922954b10e2de46071cae70585024a77c64e",
+  "wrapped_key_sha256": "790dab48189bc5398f30c8a0445a9251c3c9b795e7f9496614ea29910e7c46f6",
+  "return_public_key_sha256": "e6b5e06a64a16f607a1c32ae3986f6d9487cef8eac222ce5c28c1b6b9f3e2bf5",
+  "source_tar_sha256": "9f73c0964a7cfe5b17b47872f732234822d951ee177c120f7c11ce3bb6633f33",
+  "source_tree_sha256": "33b3b7f6b441d0e7679842f18e32d0189c73f8ca8bcf128a3cf694cf1f57d278"
+}
