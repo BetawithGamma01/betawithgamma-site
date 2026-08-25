@@ -72,6 +72,13 @@ jobs:
             exit 1
           fi
 
+      - name: Apply audited compile fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '1dc627d8758d5e8994f42515898e054c307f09893027362149ab2ea6c371f03c  .chargecompare-v2-overrides/UnitSanityReport.java' | sha256sum -c -
+          cp .chargecompare-v2-overrides/UnitSanityReport.java ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/UnitSanityReport.java
+
       - name: Build debug APK
         run: gradle -p ChargeCompareAndroid --no-daemon :app:assembleDebug
 
@@ -83,6 +90,7 @@ jobs:
           cp ChargeCompareAndroid/app/build/outputs/apk/debug/app-debug.apk out/ChargeCompare-Truth-v2.apk
           sha256sum out/ChargeCompare-Truth-v2.apk > out/APK_SHA256.txt
           sha256sum ChargeCompareAndroidV2.zip > out/SOURCE_SHA256.txt
+          sha256sum .chargecompare-v2-overrides/UnitSanityReport.java > out/OVERRIDE_SHA256.txt
           cat > out/BUILD_NOTES.txt <<'EOF'
           ChargeCompare Truth v2
           applicationId: com.oai.chargecompare.truth
@@ -90,6 +98,7 @@ jobs:
           CURRENT_NOW/CURRENT_AVERAGE preserved signed and unscaled in CSV
           CHARGE_COUNTER and ENERGY_COUNTER recorded when supported
           current-unit scale validated against independent evidence before power verdicts
+          UnitSanityReport compile-only variable rename applied from audited override
           EOF
 
       - name: Upload installable APK
