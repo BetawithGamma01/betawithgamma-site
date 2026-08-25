@@ -1,0 +1,40 @@
+name: TITAN Export Encrypted Output
+
+on:
+  push:
+    branches:
+      - titan-secure-build-20260826
+    paths:
+      - .github/workflows/titan-export-encrypted-output.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out secure build branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Verify encrypted output presence
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s titan-secure/output/TITAN-v1.0-debug.apk.cms.b64
+          test -s titan-secure/output/build-evidence.txt
+          test -s titan-secure/output/output-cert-fingerprint.txt
+          sha256sum titan-secure/output/TITAN-v1.0-debug.apk.cms.b64 > titan-secure/output/envelope-sha256.txt
+
+      - name: Upload encrypted APK retrieval bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: TITAN-v1.0-encrypted-retrieval
+          path: |
+            titan-secure/output/TITAN-v1.0-debug.apk.cms.b64
+            titan-secure/output/build-evidence.txt
+            titan-secure/output/output-cert-fingerprint.txt
+            titan-secure/output/envelope-sha256.txt
+          if-no-files-found: error
+          retention-days: 1
