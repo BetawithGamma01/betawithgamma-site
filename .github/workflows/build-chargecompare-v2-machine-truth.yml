@@ -88,6 +88,7 @@ jobs:
           set -euo pipefail
           mkdir -p out
           cp ChargeCompareAndroid/app/build/outputs/apk/debug/app-debug.apk out/ChargeCompare-Truth-v2.apk
+          cp ChargeCompareAndroidV2.zip out/ChargeCompareAndroidV2-source.zip
           sha256sum out/ChargeCompare-Truth-v2.apk > out/APK_SHA256.txt
           sha256sum ChargeCompareAndroidV2.zip > out/SOURCE_SHA256.txt
           sha256sum .chargecompare-v2-overrides/UnitSanityReport.java > out/OVERRIDE_SHA256.txt
@@ -99,6 +100,7 @@ jobs:
           CHARGE_COUNTER and ENERGY_COUNTER recorded when supported
           current-unit scale validated against independent evidence before power verdicts
           UnitSanityReport compile-only variable rename applied from audited override
+          Reconstructed source ZIP included for reproducible follow-up builds
           EOF
 
       - name: Upload installable APK
