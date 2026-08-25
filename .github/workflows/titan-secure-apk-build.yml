@@ -1,0 +1,214 @@
+name: TITAN Secure APK Build
+
+on:
+  push:
+    branches:
+      - titan-secure-build-20260826
+    paths:
+      - .github/workflows/titan-secure-apk-build.yml
+
+permissions:
+  contents: write
+
+jobs:
+  secure-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD_BRANCH: titan-secure-build-20260826
+      SOURCE_SHA256: a78d48e73b89bca65649b70fea6eab96081c14627f536495206a1f734a94d553
+
+    steps:
+      - name: Clone isolated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          git clone --depth 1 --branch "$BUILD_BRANCH" "https://github.com/$GITHUB_REPOSITORY.git" relay
+          cd relay
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
+          echo "RELAY_DIR=$RUNNER_TEMP/relay" >> "$GITHUB_ENV"
+
+      - name: Generate ephemeral source-decryption identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          openssl req -x509 -newkey rsa:3072 -sha256 -nodes \
+            -keyout "$RUNNER_TEMP/runner-private.pem" \
+            -out "$RUNNER_TEMP/runner-cert.pem" \
+            -days 1 -subj "/CN=TITAN-source-decrypt-${GITHUB_RUN_ID}" >/dev/null 2>&1
+          chmod 600 "$RUNNER_TEMP/runner-private.pem"
+          openssl x509 -in "$RUNNER_TEMP/runner-cert.pem" -noout -fingerprint -sha256 | tee "$RUNNER_TEMP/runner-cert-fingerprint.txt"
+
+      - name: Publish only ephemeral public certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RELAY_DIR"
+          mkdir -p titan-secure/handshake
+          cp "$RUNNER_TEMP/runner-cert.pem" titan-secure/handshake/runner-cert.pem
+          cp "$RUNNER_TEMP/runner-cert-fingerprint.txt" titan-secure/handshake/runner-cert-fingerprint.txt
+          printf '%s\n' "$GITHUB_RUN_ID" > titan-secure/handshake/run-id.txt
+          git add titan-secure/handshake/runner-cert.pem titan-secure/handshake/runner-cert-fingerprint.txt titan-secure/handshake/run-id.txt
+          git commit -m "build: publish ephemeral TITAN relay certificate"
+          git push origin "HEAD:$BUILD_BRANCH"
+
+      - name: Await encrypted TITAN source envelope
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RELAY_DIR"
+          found=0
+          for _ in $(seq 1 120); do
+            git fetch origin "$BUILD_BRANCH" --quiet
+            git reset --hard "origin/$BUILD_BRANCH" --quiet
+            if [ -s titan-secure/input/source.cms.b64 ] && [ -s titan-secure/input/output-cert.pem ]; then
+              found=1
+              break
+            fi
+            sleep 5
+          done
+          if [ "$found" -ne 1 ]; then
+            echo "Encrypted source envelope was not supplied within the bounded handshake window." >&2
+            exit 42
+          fi
+
+      - name: Decrypt and verify exact source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RELAY_DIR"
+          base64 -d titan-secure/input/source.cms.b64 > "$RUNNER_TEMP/source.cms"
+          openssl cms -decrypt -binary -inform DER \
+            -in "$RUNNER_TEMP/source.cms" \
+            -recip titan-secure/handshake/runner-cert.pem \
+            -inkey "$RUNNER_TEMP/runner-private.pem" \
+            -out "$RUNNER_TEMP/titan-source.tar.gz"
+          echo "$SOURCE_SHA256  $RUNNER_TEMP/titan-source.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/titan-src"
+          tar -xzf "$RUNNER_TEMP/titan-source.tar.gz" -C "$RUNNER_TEMP/titan-src"
+          test -f "$RUNNER_TEMP/titan-src/app/src/main/AndroidManifest.xml"
+          test -f "$RUNNER_TEMP/titan-src/app/build.gradle.kts"
+
+      - name: Scope fail-closed audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="$RUNNER_TEMP/titan-src"
+          if grep -R -n -E 'VpnService|AccessibilityService|DevicePolicyManager|HealthConnect|androidx\.health|OpenAI|Gemini|Claude' "$SRC/app/src"; then
+            echo "Forbidden v1.0 expansion detected." >&2
+            exit 43
+          fi
+          grep -q 'applicationId = "com.titan.v1"' "$SRC/app/build.gradle.kts"
+          grep -q 'targetSdk = 37' "$SRC/app/build.gradle.kts"
+
+      - name: Prove JDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -version
+          javac -version
+
+      - name: Install checksum-verified Android command-line tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="$RUNNER_TEMP/android-sdk"
+          ZIP="$RUNNER_TEMP/android-commandlinetools.zip"
+          mkdir -p "$SDK/cmdline-tools"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip \
+            --output "$ZIP"
+          echo "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583  $ZIP" | sha256sum -c -
+          unzip -q "$ZIP" -d "$RUNNER_TEMP/android-cli"
+          mv "$RUNNER_TEMP/android-cli/cmdline-tools" "$SDK/cmdline-tools/latest"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "$SDK/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --licenses >/dev/null || true
+          "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" \
+            "platform-tools" \
+            "build-tools;37.0.0" \
+            "platforms;android-37.0"
+          "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --list_installed
+
+      - name: Install checksum-verified Gradle 9.5.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="$RUNNER_TEMP/gradle-9.5.0-bin.zip"
+          SUM="$RUNNER_TEMP/gradle-9.5.0-bin.zip.sha256"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            https://services.gradle.org/distributions/gradle-9.5.0-bin.zip \
+            --output "$ZIP"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            https://services.gradle.org/distributions/gradle-9.5.0-bin.zip.sha256 \
+            --output "$SUM"
+          EXPECTED="$(tr -d '[:space:]' < "$SUM")"
+          test "${#EXPECTED}" -eq 64
+          echo "$EXPECTED  $ZIP" | sha256sum -c -
+          unzip -q "$ZIP" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gradle-9.5.0/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/gradle-9.5.0/bin/gradle" --version
+
+      - name: Compile TITAN v1.0 debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/titan-src"
+          gradle :app:assembleDebug --no-daemon --stacktrace --warning-mode all
+
+      - name: Verify APK signature, package identity and digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$RUNNER_TEMP/titan-src/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK" | tee "$RUNNER_TEMP/apksigner.txt"
+          "$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$APK" | tee "$RUNNER_TEMP/apk-badging.txt"
+          grep -q "package: name='com.titan.v1'" "$RUNNER_TEMP/apk-badging.txt"
+          sha256sum "$APK" | tee "$RUNNER_TEMP/apk.sha256"
+          APK_SHA="$(cut -d' ' -f1 "$RUNNER_TEMP/apk.sha256")"
+          {
+            echo "status=PROVEN_BUILD"
+            echo "source_archive_sha256=$SOURCE_SHA256"
+            echo "workflow_commit=$GITHUB_SHA"
+            echo "run_id=$GITHUB_RUN_ID"
+            echo "package=com.titan.v1"
+            echo "variant=debug"
+            echo "android_build_tools=37.0.0"
+            echo "gradle=9.5.0"
+            echo "apk_sha256=$APK_SHA"
+          } > "$RUNNER_TEMP/build-evidence.txt"
+
+      - name: Encrypt APK to requester-only output certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$RUNNER_TEMP/titan-src/app/build/outputs/apk/debug/app-debug.apk"
+          openssl x509 -in "$RELAY_DIR/titan-secure/input/output-cert.pem" -noout -fingerprint -sha256 | tee "$RUNNER_TEMP/output-cert-fingerprint.txt"
+          openssl cms -encrypt -binary -outform DER -aes256 \
+            -recip "$RELAY_DIR/titan-secure/input/output-cert.pem" \
+            -in "$APK" -out "$RUNNER_TEMP/TITAN-v1.0-debug.apk.cms"
+          base64 -w 0 "$RUNNER_TEMP/TITAN-v1.0-debug.apk.cms" > "$RUNNER_TEMP/TITAN-v1.0-debug.apk.cms.b64"
+
+      - name: Publish ciphertext and build evidence only
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RELAY_DIR"
+          git fetch origin "$BUILD_BRANCH" --quiet
+          git reset --hard "origin/$BUILD_BRANCH" --quiet
+          mkdir -p titan-secure/output
+          cp "$RUNNER_TEMP/TITAN-v1.0-debug.apk.cms.b64" titan-secure/output/TITAN-v1.0-debug.apk.cms.b64
+          cp "$RUNNER_TEMP/build-evidence.txt" titan-secure/output/build-evidence.txt
+          cp "$RUNNER_TEMP/apksigner.txt" titan-secure/output/apksigner.txt
+          cp "$RUNNER_TEMP/apk-badging.txt" titan-secure/output/apk-badging.txt
+          cp "$RUNNER_TEMP/output-cert-fingerprint.txt" titan-secure/output/output-cert-fingerprint.txt
+          git add titan-secure/output
+          git commit -m "build: publish encrypted TITAN v1.0 APK evidence"
+          git push origin "HEAD:$BUILD_BRANCH"
