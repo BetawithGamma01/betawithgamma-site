@@ -36,6 +36,24 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Audit transferred source chunks
+        shell: bash
+        run: |
+          set -u
+          bad=0
+          for f in .chargecompare-v2/chunk*.b64; do
+            echo "=== $f ==="
+            wc -c "$f"
+            sha256sum "$f"
+            if base64 --decode "$f" >/dev/null; then
+              echo "BASE64_OK"
+            else
+              echo "BASE64_BAD"
+              bad=1
+            fi
+          done
+          exit "$bad"
+
       - name: Reconstruct and verify source
         shell: bash
         run: |
