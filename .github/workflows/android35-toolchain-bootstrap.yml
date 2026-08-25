@@ -1,0 +1,37 @@
+name: Android 35 Toolchain Bootstrap
+
+on:
+  push:
+    branches:
+      - toolchain-bootstrap-android35
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-toolchain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch official Android SDK archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p toolchain
+          curl --fail --location --retry 3 \
+            https://dl.google.com/android/repository/build-tools_r35_linux.zip \
+            -o toolchain/build-tools_r35_linux.zip
+          curl --fail --location --retry 3 \
+            https://dl.google.com/android/repository/platform-35_r02.zip \
+            -o toolchain/platform-35_r02.zip
+          sha256sum toolchain/* | tee toolchain/SHA256SUMS.txt
+          test -s toolchain/build-tools_r35_linux.zip
+          test -s toolchain/platform-35_r02.zip
+
+      - name: Upload toolchain archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: android35-local-build-toolchain
+          path: toolchain/
+          compression-level: 0
+          retention-days: 1
