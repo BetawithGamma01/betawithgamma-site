@@ -1,0 +1,9 @@
+status=PROVEN_BUILD
+source_archive_sha256=a78d48e73b89bca65649b70fea6eab96081c14627f536495206a1f734a94d553
+workflow_commit=809a4a3a7130e1011a60aaa19063a954f604f406
+run_id=32893508421
+package=com.titan.v1
+variant=debug
+android_build_tools=37.0.0
+gradle=9.5.0
+apk_sha256=250adfd4b05ecb769435136faee59caad066495a10742a61f9bd07a3f1c6bc8b
