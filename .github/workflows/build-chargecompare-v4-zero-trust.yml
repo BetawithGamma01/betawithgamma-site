@@ -1,0 +1,100 @@
+name: Build ChargeCompare Zero Trust v4 APK
+
+on:
+  push:
+    branches:
+      - chargecompare-v3-evidence-engine
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Reconstruct and verify v4 zero-trust source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .chargecompare-v4/part*.b64 | tr -d '[:space:]' | base64 --decode > ChargeCompareAndroidV4-zero-trust-source.zip
+          echo '9b389a9a7384577b5a71901b55c7a627317d38740ec138c7f38b5c60628f2c07  ChargeCompareAndroidV4-zero-trust-source.zip' | sha256sum -c -
+          unzip -q ChargeCompareAndroidV4-zero-trust-source.zip
+          test -f ChargeCompareAndroid/app/src/test/java/com/oai/chargecompare/EvidenceEngineTest.java
+          grep -q 'versionName.*4.0-zero-trust' ChargeCompareAndroid/app/build.gradle
+          grep -q 'rawChargeCounter' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/Sample.java
+          grep -q 'rawEnergyCounter' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/Sample.java
+          grep -q 'counterRateBlocks' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/CompareEngine.java
+          grep -q 'Frame-by-frame power is always withheld' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/UnitSanityReport.java
+          grep -q 'frame voltage.*current is not treated as evidence' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/FrameEvidence.java
+          grep -q 'NOT MEASURED' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/FrameEvidence.java
+          if grep -R 'Math.abs(current' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare; then
+            echo 'Raw-current absolute-value transform detected; refusing build.' >&2
+            exit 1
+          fi
+
+      - name: Zero-trust evidence regression tests
+        run: gradle -p ChargeCompareAndroid --no-daemon :app:testDebugUnitTest
+
+      - name: Build debug APK
+        run: gradle -p ChargeCompareAndroid --no-daemon :app:assembleDebug
+
+      - name: Prepare artifact and build evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp ChargeCompareAndroid/app/build/outputs/apk/debug/app-debug.apk out/ChargeCompare-ZeroTrust-v4.apk
+          cp ChargeCompareAndroidV4-zero-trust-source.zip out/ChargeCompareAndroidV4-zero-trust-source.zip
+          sha256sum out/ChargeCompare-ZeroTrust-v4.apk > out/APK_SHA256.txt
+          sha256sum out/ChargeCompareAndroidV4-zero-trust-source.zip > out/SOURCE_SHA256.txt
+          cat > out/ZERO_TRUST_EVIDENCE.txt <<'TXT'
+          ChargeCompare Zero Trust v4
+
+          Measurement policy
+          ------------------
+          * No individual Android battery-property sample is treated as ground truth.
+          * CURRENT_NOW/CURRENT_AVERAGE/CHARGE_COUNTER/ENERGY_COUNTER raw values are retained.
+          * Voltage/temperature/SoC are ACTION_BATTERY_CHANGED observations; the underlying sensor timestamp is not exposed by Android.
+          * Sequential BatteryManager and broadcast values are not assumed to be an atomic hardware frame.
+          * Frame-by-frame watts are always withheld. The app does not display voltage × CURRENT_NOW as validated power.
+          * Nominal battery capacity is optional declared context only; it is never presented as a measured frame value and does not choose the cable winner.
+          * Primary A/B cable evidence is robust CHARGE_COUNTER accumulation rate over accepted evidence windows.
+          * CURRENT_NOW scaling is corroborative only and requires independent CHARGE_COUNTER evidence.
+          * ENERGY_COUNTER may support window-average battery-side power only when independent charge/energy deltas imply a compatible average voltage.
+          * Missing or conflicting evidence causes withholding/refusal, not guessed values.
+          * Warm-up, sampling gaps, power-source changes, taper/condition confounders and excessive property-read spans reduce or block evidence.
+          * A SHA-256 evidence chain detects post-capture sequence edits; it proves log integrity, not sensor accuracy.
+          * Cable comparison uses deterministic block-bootstrap uncertainty and refuses a winner for small/overlapping effects.
+
+          Build gate
+          ----------
+          The APK is produced only after the v4 JUnit regression suite passes, including tests for counter-based current-scale corroboration, frame-power withholding, voltage cross-checks, undeclared capacity, sampling-gap exclusion, counter-only cable comparison, and evidence-chain tamper detection.
+          TXT
+
+      - name: Upload installable APK and evidence package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChargeCompare-ZeroTrust-v4-APK
+          path: out/
+          retention-days: 14
