@@ -1,0 +1,114 @@
+name: Build Microstructure Android V0.3 WebView OAuth
+on:
+  push:
+    branches: ["ci-android-authfix-v03-webview"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Rehydrate proven V0 source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cat ci/microstructure-v0-chunks/chunk-00 \
+              ci/microstructure-v0-chunks/chunk-01 \
+              ci/microstructure-v0-chunks/chunk-02 \
+              ci/microstructure-v0-chunks/chunk-03 \
+              ci/microstructure-v0-chunks/chunk-04 > /tmp/source.b64
+          printf '%s' 'yo+RPQfuEf1YbRiizbN5Ns8XPP8H0qCM6gBAAQA=' >> /tmp/source.b64
+          test "$(wc -c < /tmp/source.b64)" = "20040"
+          base64 -d /tmp/source.b64 > /tmp/source.tar.gz
+          echo '25311a1e9c9d6c4fd63391a3cc44ce690b03982e65f710693930a04ac3ea20a7  /tmp/source.tar.gz' | sha256sum -c -
+          mkdir -p /tmp/src
+          tar -xzf /tmp/source.tar.gz -C /tmp/src
+          test -f /tmp/src/microstructure-evidence-android-v0/settings.gradle.kts
+
+      - name: Restore and verify proven V0.2 broker layer
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ROOT=/tmp/src/microstructure-evidence-android-v0
+          PKG=$ROOT/app/src/main/java/com/betawithgamma/microstructure
+          TEST=$ROOT/app/src/test/java/com/betawithgamma/microstructure
+          cp ci/authfix-v02/overrides/BrokerAuthClient.java "$PKG/BrokerAuthClient.java"
+          cp ci/authfix-v02/overrides/ProviderConfig.java "$PKG/ProviderConfig.java"
+          cp ci/authfix-v02/overrides/FyersTbtConnector.java "$PKG/FyersTbtConnector.java"
+          cp ci/authfix-v02/overrides/MainActivity.java "$PKG/MainActivity.java"
+          cp ci/authfix-v02/overrides/BrokerAuthClientTest.java "$TEST/BrokerAuthClientTest.java"
+          cp ci/authfix-v02/overrides/app-build.gradle.kts "$ROOT/app/build.gradle.kts"
+          echo '8647d533bea69a3156ab4bdad790ac4ac7d0712b41cf789b87e1a7b3c583e246  '"$PKG/BrokerAuthClient.java" | sha256sum -c -
+          echo '5636a561ddbccea4a9136c8852782d8acc81c6ca22e0fb7bd3b5afb2971f27d2  '"$PKG/ProviderConfig.java" | sha256sum -c -
+          echo '35fe433ff691d45a4a131b5f4d54bdf901b4f3618263103da9277df0869d20b9  '"$PKG/FyersTbtConnector.java" | sha256sum -c -
+          echo '7fcf40fe3ba596b0d940eb73471531220e96f22b2fb1e8fae2af58713a4c35ea  '"$PKG/MainActivity.java" | sha256sum -c -
+          echo 'f88b5adabb1e55672682d4b6924c1faa05908ac48c8d926bc233b613015c0d31  '"$TEST/BrokerAuthClientTest.java" | sha256sum -c -
+          echo '9077a33bd918f296d1dd317c0b39c1e0afce8b31c93144dac7702731543ae855  '"$ROOT/app/build.gradle.kts" | sha256sum -c -
+
+      - name: Overlay and verify V0.3 embedded OAuth repair
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ROOT=/tmp/src/microstructure-evidence-android-v0
+          PKG=$ROOT/app/src/main/java/com/betawithgamma/microstructure
+          TEST=$ROOT/app/src/test/java/com/betawithgamma/microstructure
+          cp ci/authfix-v03/MainActivity.java "$PKG/MainActivity.java"
+          cp ci/authfix-v03/FyersOAuth.java "$PKG/FyersOAuth.java"
+          cp ci/authfix-v03/FyersLoginActivity.java "$PKG/FyersLoginActivity.java"
+          cp ci/authfix-v03/AndroidManifest.xml "$ROOT/app/src/main/AndroidManifest.xml"
+          cp ci/authfix-v03/app-build.gradle.kts "$ROOT/app/build.gradle.kts"
+          cp ci/authfix-v03/FyersOAuthTest.java "$TEST/FyersOAuthTest.java"
+          echo 'ca73caaca670c761ba17d5fb6210caf76e6357b4dcbf3c61c7caa69a14b3309c  '"$PKG/MainActivity.java" | sha256sum -c -
+          echo '8a98542f107c9abe97b65ca1c26c3631bd975e1fa41f02e8f431d532f1fe2eea  '"$PKG/FyersOAuth.java" | sha256sum -c -
+          echo 'de4667bbe4db2b48d4e5ad5051f612e25dec080d60f3ae04bf7f17024f256332  '"$PKG/FyersLoginActivity.java" | sha256sum -c -
+          echo 'c0dc63391f82cee3d6ee64e405445e945b8b6ff7d0ffc958f6df673cb5653f3b  '"$ROOT/app/src/main/AndroidManifest.xml" | sha256sum -c -
+          echo 'a7fab09c38dc0109fc127926adc3900d294253e79c85740755108abad9d9781c  '"$ROOT/app/build.gradle.kts" | sha256sum -c -
+          echo 'f6ca195b2484e654c3aee44e37b2aef431f7e8863877bf13b39b1da59d8b4826  '"$TEST/FyersOAuthTest.java" | sha256sum -c -
+
+      - name: Bootstrap Gradle and Android SDK
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          test -x /tmp/gradle-8.10.2/bin/gradle
+          echo "ANDROID_HOME=${ANDROID_HOME:-}"
+          if [ -x "${ANDROID_HOME:-}/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+            "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+          fi
+
+      - name: Test and build APK
+        shell: bash
+        run: |
+          set +e
+          cd /tmp/src/microstructure-evidence-android-v0
+          /tmp/gradle-8.10.2/bin/gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:assembleDebug > /tmp/android-v03-build.log 2>&1
+          code=$?
+          cat /tmp/android-v03-build.log
+          echo "$code" > /tmp/android-v03-build.exit
+          exit 0
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: microstructure-evidence-v03-webview-oauth
+          path: |
+            /tmp/android-v03-build.log
+            /tmp/android-v03-build.exit
+            /tmp/src/microstructure-evidence-android-v0/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
+
+      - name: Enforce build success
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test "$(cat /tmp/android-v03-build.exit)" = "0"
+          test -f /tmp/src/microstructure-evidence-android-v0/app/build/outputs/apk/debug/app-debug.apk
