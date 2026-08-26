@@ -18,13 +18,25 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Verify and extract exact V0.5 source
+      - name: Reconstruct and verify exact V0.5 source
         shell: bash
         run: |
           set -euxo pipefail
-          echo '266b5451ad9e616f00bbbde4b26d7b36332b86f996144b76f90f0ee3bb4d7051  ci/v05/microstructure-evidence-android-v0.5-certifier.tar.gz' | sha256sum -c -
+          cat ci/v05/chunks/chunk-00 \
+              ci/v05/chunks/chunk-01 \
+              ci/v05/chunks/chunk-02 \
+              ci/v05/chunks/chunk-03 \
+              ci/v05/chunks/chunk-04 \
+              ci/v05/chunks/chunk-05 \
+              ci/v05/chunks/chunk-06a \
+              ci/v05/chunks/chunk-06b \
+              ci/v05/chunks/chunk-07a \
+              ci/v05/chunks/chunk-07b > /tmp/v05-source.b64
+          test "$(wc -c < /tmp/v05-source.b64)" = '60800'
+          base64 -d /tmp/v05-source.b64 > /tmp/v05-source.tar.gz
+          echo '266b5451ad9e616f00bbbde4b26d7b36332b86f996144b76f90f0ee3bb4d7051  /tmp/v05-source.tar.gz' | sha256sum -c -
           rm -rf /tmp/v05 && mkdir -p /tmp/v05
-          tar -xzf ci/v05/microstructure-evidence-android-v0.5-certifier.tar.gz -C /tmp/v05
+          tar -xzf /tmp/v05-source.tar.gz -C /tmp/v05
           test -f /tmp/v05/app/src/main/java/com/betawithgamma/microstructure/FyersProtoDecoder.java
           test -f /tmp/v05/app/src/main/java/com/betawithgamma/microstructure/Dhan20Decoder.java
           test -f /tmp/v05/app/src/main/java/com/betawithgamma/microstructure/SessionCertifier.java
