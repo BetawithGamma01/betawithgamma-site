@@ -1,0 +1,15 @@
+name: Runner Probe
+on:
+  push:
+    branches: ["ci-android-microstructure-v0"]
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prove runner executes shell
+        run: |
+          echo RUNNER_OK
+          uname -a
+          java -version || true
