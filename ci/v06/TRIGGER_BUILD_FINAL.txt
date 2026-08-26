@@ -1,0 +1,1 @@
+V0.6 final machine-truth build trigger after canonical source-tree gate
