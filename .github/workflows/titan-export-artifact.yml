@@ -1,0 +1,39 @@
+name: TITAN Export Encrypted APK
+
+on:
+  push:
+    branches:
+      - titan-v1-rebuild-20260826
+    paths:
+      - .github/workflows/titan-export-artifact.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout isolated rebuild branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Verify encrypted output exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s titan-rebuild/output/TITAN-v1.0-rebuild.apk.cms
+          test -s titan-rebuild/output/build-evidence.txt
+          sha256sum titan-rebuild/output/TITAN-v1.0-rebuild.apk.cms > titan-rebuild/output/encrypted-apk.cms.sha256
+      - name: Upload encrypted APK bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: TITAN-v1.0-encrypted-rebuild
+          path: |
+            titan-rebuild/output/TITAN-v1.0-rebuild.apk.cms
+            titan-rebuild/output/build-evidence.txt
+            titan-rebuild/output/apksigner.txt
+            titan-rebuild/output/apk-badging.txt
+            titan-rebuild/output/core-tests.txt
+            titan-rebuild/output/encrypted-apk.cms.sha256
+          if-no-files-found: error
+          retention-days: 1
