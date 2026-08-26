@@ -10,16 +10,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Rehydrate source
+      - name: Rehydrate and verify source
         shell: bash
         run: |
           set -euxo pipefail
-          base64 -d ci/microstructure-evidence-v0-source.tar.gz.b64 > /tmp/source.tar.gz
+          cat ci/microstructure-v0-chunks/chunk-00 \
+              ci/microstructure-v0-chunks/chunk-01 \
+              ci/microstructure-v0-chunks/chunk-02 \
+              ci/microstructure-v0-chunks/chunk-03 \
+              ci/microstructure-v0-chunks/chunk-04 > /tmp/source.b64
+          printf '%s' 'yo+RPQfuEf1YbRiizbN5Ns8XPP8H0qCM6gBAAQA=' >> /tmp/source.b64
+          test "$(wc -c < /tmp/source.b64)" = "20040"
+          base64 -d /tmp/source.b64 > /tmp/source.tar.gz
+          echo '25311a1e9c9d6c4fd63391a3cc44ce690b03982e65f710693930a04ac3ea20a7  /tmp/source.tar.gz' | sha256sum -c -
           mkdir -p /tmp/src
           tar -xzf /tmp/source.tar.gz -C /tmp/src
           test -f /tmp/src/microstructure-evidence-android-v0/settings.gradle.kts
