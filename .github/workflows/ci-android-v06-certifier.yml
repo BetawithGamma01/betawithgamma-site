@@ -23,8 +23,11 @@ jobs:
           test -x "$ANDROID_HOME/build-tools/35.0.0/d8"
           test -x "$ANDROID_HOME/build-tools/35.0.0/zipalign"
           test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          LIBCPP=""
+          for p in "$ANDROID_HOME/build-tools/35.0.0/lib64/libc++.so" "$ANDROID_HOME/build-tools/35.0.0/lib/libc++.so"; do [ -f "$p" ] && LIBCPP="$p" && break; done
+          test -n "$LIBCPP"
           rm -rf /tmp/android-manual-kit
-          mkdir -p /tmp/android-manual-kit/sdk/platforms/android-35 /tmp/android-manual-kit/sdk/build-tools/35.0.0/lib /tmp/android-manual-kit/deps
+          mkdir -p /tmp/android-manual-kit/sdk/platforms/android-35 /tmp/android-manual-kit/sdk/build-tools/35.0.0/lib /tmp/android-manual-kit/sdk/build-tools/35.0.0/lib64 /tmp/android-manual-kit/deps
           cp "$ANDROID_HOME/platforms/android-35/android.jar" /tmp/android-manual-kit/sdk/platforms/android-35/
           cp "$ANDROID_HOME/build-tools/35.0.0/aapt2" /tmp/android-manual-kit/sdk/build-tools/35.0.0/
           cp "$ANDROID_HOME/build-tools/35.0.0/d8" /tmp/android-manual-kit/sdk/build-tools/35.0.0/
@@ -32,6 +35,7 @@ jobs:
           cp "$ANDROID_HOME/build-tools/35.0.0/apksigner" /tmp/android-manual-kit/sdk/build-tools/35.0.0/
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/d8.jar" /tmp/android-manual-kit/sdk/build-tools/35.0.0/lib/
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" /tmp/android-manual-kit/sdk/build-tools/35.0.0/lib/
+          cp "$LIBCPP" /tmp/android-manual-kit/sdk/build-tools/35.0.0/lib64/libc++.so
           cat > /tmp/pom.xml <<'POM'
           <project xmlns="http://maven.apache.org/POM/4.0.0">
             <modelVersion>4.0.0</modelVersion><groupId>local</groupId><artifactId>manual-kit</artifactId><version>1</version>
@@ -50,8 +54,8 @@ jobs:
           du -sh /tmp/android-manual-kit
       - uses: actions/upload-artifact@v4
         with:
-          name: android35-manual-tools-and-deps
+          name: android35-manual-tools-and-deps-libcpp
           path: /tmp/android-manual-kit
           if-no-files-found: error
           compression-level: 6
-# trigger manual-kit v2
+# trigger manual-kit libcpp
