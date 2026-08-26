@@ -1,0 +1,10 @@
+status=PROVEN_REBUILD
+source_archive_sha256=94f15c68f897733507be24dceec5fb262934b82b192a8601f477c1045fc8156a
+workflow_commit=b6f654e746660d73fb815f7d92a8baa55fd1ccfe
+run_id=32922164978
+package=com.titan.v1
+variant=debug
+android_build_tools=37.0.0
+gradle=9.5.0
+core_tests=17/17
+apk_sha256=9b6a9fafdb9d0f8005e479d2bdbab2786862cc60c8da1d5f2b6b13e8e62174eb

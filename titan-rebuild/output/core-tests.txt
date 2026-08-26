@@ -1,0 +1,18 @@
+PASS  closed session count
+PASS  closed session duration
+PASS  closed flag
+PASS  duplicate resume does not reset start
+PASS  open session created
+PASS  open session duration
+PASS  no invented quota
+PASS  normal policy
+PASS  warning threshold
+PASS  session limit
+PASS  daily limit
+PASS  red evidence cannot punish
+PASS  missing permission is red
+PASS  clock anomaly is red
+PASS  coverage gap is amber
+PASS  healthy integrity is green
+PASS  first scan coverage is unknown
+RESULT passed=17 failed=0
