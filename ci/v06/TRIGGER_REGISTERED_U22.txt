@@ -1,0 +1,1 @@
+trigger registered Ubuntu 22 V0.6 workflow lane
