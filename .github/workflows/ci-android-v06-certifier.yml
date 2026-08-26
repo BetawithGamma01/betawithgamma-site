@@ -58,7 +58,7 @@ jobs:
               ci/v06/overlay/chunk-07 \
               ci/v06/overlay/chunk-08 \
               ci/v06/overlay/chunk-09 > /tmp/v06-overlay.b64
-          test "$(wc -c < /tmp/v06-overlay.b64)" = '39892'
+          test "$(wc -c < /tmp/v06-overlay.b64)" = '39932'
           base64 -d /tmp/v06-overlay.b64 > /tmp/v06-overlay.tar.gz
           echo 'a14a207a7108a18dcbe3f3b74459ff2b333a55e2c4687c94e08e58938f9d3b38  /tmp/v06-overlay.tar.gz' | sha256sum -c -
           tar -xzf /tmp/v06-overlay.tar.gz -C /tmp/v06
