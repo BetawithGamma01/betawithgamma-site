@@ -18,7 +18,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Reconstruct base source and apply exact compile overlay
+      - name: Reconstruct base source and apply exact overlays
         shell: bash
         run: |
           set -euxo pipefail
@@ -37,14 +37,19 @@ jobs:
           echo '266b5451ad9e616f00bbbde4b26d7b36332b86f996144b76f90f0ee3bb4d7051  /tmp/v05-source.tar.gz' | sha256sum -c -
           rm -rf /tmp/v05 && mkdir -p /tmp/v05
           tar -xzf /tmp/v05-source.tar.gz -C /tmp/v05
+
           echo '8f4aa78150a8c5dfbc02d4d3cfba8afa0c04b76fc88dedf506492ec4242bcbe4  ci/v05/fixes/EvidenceSealer.java' | sha256sum -c -
           cp ci/v05/fixes/EvidenceSealer.java /tmp/v05/app/src/main/java/com/betawithgamma/microstructure/EvidenceSealer.java
+
+          echo '0157e594017ca4131463333c724a3bfa8eb2f200b8ab77e4abdb28b0b44fa1a7  ci/v05/fixes/FyersBookReconstructorTest.java' | sha256sum -c -
+          cp ci/v05/fixes/FyersBookReconstructorTest.java /tmp/v05/app/src/test/java/com/betawithgamma/microstructure/FyersBookReconstructorTest.java
+
           test -f /tmp/v05/app/src/main/java/com/betawithgamma/microstructure/FyersProtoDecoder.java
           test -f /tmp/v05/app/src/main/java/com/betawithgamma/microstructure/Dhan20Decoder.java
           test -f /tmp/v05/app/src/main/java/com/betawithgamma/microstructure/SessionCertifier.java
           test -f /tmp/v05/evidence/CROSS_IMPLEMENTATION_EVIDENCE.json
           got="$(python3 /tmp/v05/tools/source_tree_hash.py /tmp/v05)"
-          test "$got" = 'dabd01874051093404f6eaca384cfef68eb366f2d41e1527737603fa07586b65'
+          test "$got" = '4a974d199bae073705609a335bd16e6ccdcffc3c6144d3ca82336b9a1c62d3b2'
 
       - name: Zero-trust scope gate
         shell: bash
@@ -80,7 +85,7 @@ jobs:
           cd /tmp/v05
           /tmp/gradle-8.10.2/bin/gradle --no-daemon --stacktrace \
             -Pv05GitCommit="$GITHUB_SHA" \
-            -Pv05SourceTreeSha256='dabd01874051093404f6eaca384cfef68eb366f2d41e1527737603fa07586b65' \
+            -Pv05SourceTreeSha256='4a974d199bae073705609a335bd16e6ccdcffc3c6144d3ca82336b9a1c62d3b2' \
             -Pv05CiRunId="$GITHUB_RUN_ID" \
             :app:testDebugUnitTest :app:assembleDebug | tee /tmp/v05-build.log
           test -f app/build/outputs/apk/debug/app-debug.apk
@@ -111,7 +116,8 @@ jobs:
             'github_run_id':os.environ['GITHUB_RUN_ID'],
             'base_source_archive_sha256':'266b5451ad9e616f00bbbde4b26d7b36332b86f996144b76f90f0ee3bb4d7051',
             'compile_overlay_evidence_sealer_sha256':'8f4aa78150a8c5dfbc02d4d3cfba8afa0c04b76fc88dedf506492ec4242bcbe4',
-            'source_tree_sha256':'dabd01874051093404f6eaca384cfef68eb366f2d41e1527737603fa07586b65',
+            'test_fixture_overlay_sha256':'0157e594017ca4131463333c724a3bfa8eb2f200b8ab77e4abdb28b0b44fa1a7',
+            'source_tree_sha256':'4a974d199bae073705609a335bd16e6ccdcffc3c6144d3ca82336b9a1c62d3b2',
             'apk_sha256':sha(apk),
             'apk_bytes':apk.stat().st_size,
             'unit_tests':'PASS',
