@@ -1,4 +1,4 @@
-name: Ferry Compact V0.6 Manual Build Kit
+name: Ferry Android 35 Manual Tools
 on:
   push:
     branches: ["ci-android-v06-certifier"]
@@ -10,29 +10,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Reconstruct exact V0.6 source
-        shell: bash
-        run: |
-          set -euxo pipefail
-          cat ci/v05/chunks/chunk-00 ci/v05/chunks/chunk-01 ci/v05/chunks/chunk-02 ci/v05/chunks/chunk-03 ci/v05/chunks/chunk-04 ci/v05/chunks/chunk-05 ci/v05/chunks/chunk-06a ci/v05/chunks/chunk-06b ci/v05/chunks/chunk-07a ci/v05/chunks/chunk-07b > /tmp/v05-source.b64
-          test "$(wc -c < /tmp/v05-source.b64)" = '60800'
-          base64 -d /tmp/v05-source.b64 > /tmp/v05-source.tar.gz
-          echo '266b5451ad9e616f00bbbde4b26d7b36332b86f996144b76f90f0ee3bb4d7051  /tmp/v05-source.tar.gz' | sha256sum -c -
-          rm -rf /tmp/v06 && mkdir -p /tmp/v06
-          tar -xzf /tmp/v05-source.tar.gz -C /tmp/v06
-          echo '8f4aa78150a8c5dfbc02d4d3cfba8afa0c04b76fc88dedf506492ec4242bcbe4  ci/v05/fixes/EvidenceSealer.java' | sha256sum -c -
-          cp ci/v05/fixes/EvidenceSealer.java /tmp/v06/app/src/main/java/com/betawithgamma/microstructure/EvidenceSealer.java
-          echo '0157e594017ca4131463333c724a3bfa8eb2f200b8ab77e4abdb28b0b44fa1a7  ci/v05/fixes/FyersBookReconstructorTest.java' | sha256sum -c -
-          cp ci/v05/fixes/FyersBookReconstructorTest.java /tmp/v06/app/src/test/java/com/betawithgamma/microstructure/FyersBookReconstructorTest.java
-          test "$(python3 /tmp/v06/tools/source_tree_hash.py /tmp/v06)" = '4a974d199bae073705609a335bd16e6ccdcffc3c6144d3ca82336b9a1c62d3b2'
-          cat ci/v06/overlay/chunk-00 ci/v06/overlay/chunk-01 ci/v06/overlay/chunk-02 ci/v06/overlay/chunk-03 ci/v06/overlay/chunk-04 ci/v06/overlay/chunk-05 ci/v06/overlay/chunk-06 ci/v06/overlay/chunk-07 ci/v06/overlay/chunk-08 ci/v06/overlay/chunk-09 > /tmp/v06-overlay.b64
-          test "$(wc -c < /tmp/v06-overlay.b64)" = '39932'
-          base64 -d /tmp/v06-overlay.b64 > /tmp/v06-overlay.tar.gz
-          tar -xzf /tmp/v06-overlay.tar.gz -C /tmp/v06
-          got="$(python3 /tmp/v06/tools/source_tree_hash.py /tmp/v06)"
-          echo "V06_SOURCE_TREE_SHA=$got"
-          test "$got" = '8da07ad1024aea512f8b1c41cdc150fa5df8bd951269382b9cba18e7c42db48e'
-      - name: Assemble compact manual-build kit
+      - name: Assemble compact Android manual toolchain
         shell: bash
         run: |
           set -euxo pipefail
@@ -45,14 +23,13 @@ jobs:
           test -x "$ANDROID_HOME/build-tools/35.0.0/d8"
           test -x "$ANDROID_HOME/build-tools/35.0.0/zipalign"
           test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
-          rm -rf /tmp/v06-manual-kit
-          mkdir -p /tmp/v06-manual-kit/sdk/platforms/android-35 /tmp/v06-manual-kit/sdk/build-tools /tmp/v06-manual-kit/deps /tmp/v06-manual-kit/source
-          cp "$ANDROID_HOME/platforms/android-35/android.jar" /tmp/v06-manual-kit/sdk/platforms/android-35/
-          cp -a "$ANDROID_HOME/build-tools/35.0.0" /tmp/v06-manual-kit/sdk/build-tools/
-          cp -a /tmp/v06/. /tmp/v06-manual-kit/source/
+          rm -rf /tmp/android-manual-kit
+          mkdir -p /tmp/android-manual-kit/sdk/platforms/android-35 /tmp/android-manual-kit/sdk/build-tools /tmp/android-manual-kit/deps
+          cp "$ANDROID_HOME/platforms/android-35/android.jar" /tmp/android-manual-kit/sdk/platforms/android-35/
+          cp -a "$ANDROID_HOME/build-tools/35.0.0" /tmp/android-manual-kit/sdk/build-tools/
           cat > /tmp/pom.xml <<'POM'
           <project xmlns="http://maven.apache.org/POM/4.0.0">
-            <modelVersion>4.0.0</modelVersion><groupId>local</groupId><artifactId>v06-kit</artifactId><version>1</version>
+            <modelVersion>4.0.0</modelVersion><groupId>local</groupId><artifactId>manual-kit</artifactId><version>1</version>
             <dependencies>
               <dependency><groupId>com.squareup.okhttp3</groupId><artifactId>okhttp</artifactId><version>4.12.0</version></dependency>
               <dependency><groupId>junit</groupId><artifactId>junit</artifactId><version>4.13.2</version><scope>test</scope></dependency>
@@ -60,15 +37,15 @@ jobs:
             </dependencies>
           </project>
           POM
-          mvn -q -f /tmp/pom.xml dependency:copy-dependencies -DincludeScope=test -DoutputDirectory=/tmp/v06-manual-kit/deps
-          test -f /tmp/v06-manual-kit/deps/okhttp-4.12.0.jar
-          test -f /tmp/v06-manual-kit/deps/junit-4.13.2.jar
-          find /tmp/v06-manual-kit -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/v06-manual-kit/MANIFEST.sha256
-          printf 'SOURCE_TREE_SHA256=8da07ad1024aea512f8b1c41cdc150fa5df8bd951269382b9cba18e7c42db48e\nANDROID_PLATFORM=35\nANDROID_BUILD_TOOLS=35.0.0\nPIPELINE=AAPT2_LINK_JAVAC_D8_ZIPALIGN_APKSIGNER\n' > /tmp/v06-manual-kit/KIT_INFO.txt
-          du -sh /tmp/v06-manual-kit
+          mvn -q -f /tmp/pom.xml dependency:copy-dependencies -DincludeScope=test -DoutputDirectory=/tmp/android-manual-kit/deps
+          test -f /tmp/android-manual-kit/deps/okhttp-4.12.0.jar
+          test -f /tmp/android-manual-kit/deps/junit-4.13.2.jar
+          find /tmp/android-manual-kit -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/android-manual-kit/MANIFEST.sha256
+          printf 'ANDROID_PLATFORM=35\nANDROID_BUILD_TOOLS=35.0.0\nPIPELINE=AAPT2_LINK_JAVAC_D8_ZIPALIGN_APKSIGNER\n' > /tmp/android-manual-kit/KIT_INFO.txt
+          du -sh /tmp/android-manual-kit
       - uses: actions/upload-artifact@v4
         with:
-          name: v06-compact-manual-build-kit
-          path: /tmp/v06-manual-kit
+          name: android35-manual-tools-and-deps
+          path: /tmp/android-manual-kit
           if-no-files-found: error
           compression-level: 6
