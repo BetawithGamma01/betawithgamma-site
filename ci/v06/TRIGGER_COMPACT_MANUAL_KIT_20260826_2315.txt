@@ -1,0 +1,1 @@
+Trigger compact V0.6 manual-build kit after workflow update.
