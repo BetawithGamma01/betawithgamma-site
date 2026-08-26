@@ -1,0 +1,58 @@
+name: TITAN Assemble Encrypted Input
+
+on:
+  push:
+    branches:
+      - titan-v1-rebuild-20260826
+    paths:
+      - .github/workflows/titan-assemble-input.yml
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD_BRANCH: titan-v1-rebuild-20260826
+      CMS_SHA256: 7642edb4b281b4a061832aae6a37bc17229512ae5f5172f1a6db68de5d48c829
+    steps:
+      - name: Clone relay branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          git clone --depth 1 --branch "$BUILD_BRANCH" "https://github.com/$GITHUB_REPOSITORY.git" relay
+          cd relay
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
+      - name: Assemble and verify ciphertext
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/relay"
+          test -s titan-rebuild/input/source.part00.txt
+          test -s titan-rebuild/input/source.part01.txt
+          test -s titan-rebuild/input/source.part02.txt
+          test -s titan-rebuild/input/source.part03.txt
+          test -s titan-rebuild/input/source.part04.txt
+          cat titan-rebuild/input/source.part00.txt \
+              titan-rebuild/input/source.part01.txt \
+              titan-rebuild/input/source.part02.txt \
+              titan-rebuild/input/source.part03.txt \
+              titan-rebuild/input/source.part04.txt \
+              > titan-rebuild/input/source.cms.b64
+          test "$(wc -c < titan-rebuild/input/source.cms.b64)" -eq 24016
+          base64 -d titan-rebuild/input/source.cms.b64 > "$RUNNER_TEMP/source.cms"
+          echo "$CMS_SHA256  $RUNNER_TEMP/source.cms" | sha256sum -c -
+      - name: Publish assembled encrypted source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/relay"
+          git add titan-rebuild/input/source.cms.b64
+          git commit -m "build: assemble verified TITAN encrypted source"
+          git push origin "HEAD:$BUILD_BRANCH"
