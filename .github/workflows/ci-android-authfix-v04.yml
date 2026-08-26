@@ -76,14 +76,14 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          base64 -d ci/authfix-v04/v04-roster.patch.gz.b64 | gzip -d > /tmp/v04.patch
-          echo 'd5561f935a1be82decb3bc67f93c11b3189beabda9b57fb77c846c5b5715bf3c  /tmp/v04.patch' | sha256sum -c -
-          cd /tmp/src/microstructure-evidence-android-v0
-          git apply --check /tmp/v04.patch
-          git apply /tmp/v04.patch
-          grep -q 'versionName = "0.4.0-roster-gates"' app/build.gradle.kts
-          grep -q 'resolveFyersNiftyAtmTbtRoster' app/src/main/java/com/betawithgamma/microstructure/BrokerAuthClient.java
-          grep -q 'FYERS TBT symbols missing' app/src/main/java/com/betawithgamma/microstructure/ProviderConfig.java
+          test "$(git hash-object ci/authfix-v04/apply-v04.py)" = "a0913484bb7f5091e1761193881fda17b50617ea"
+          python3 ci/authfix-v04/apply-v04.py /tmp/src/microstructure-evidence-android-v0
+          ROOT=/tmp/src/microstructure-evidence-android-v0
+          grep -q 'versionName = "0.4.0-roster-gates"' "$ROOT/app/build.gradle.kts"
+          grep -q 'resolveFyersNiftyAtmTbtRoster' "$ROOT/app/src/main/java/com/betawithgamma/microstructure/BrokerAuthClient.java"
+          grep -q 'FYERS TBT symbols missing' "$ROOT/app/src/main/java/com/betawithgamma/microstructure/ProviderConfig.java"
+          test -f "$ROOT/app/src/test/java/com/betawithgamma/microstructure/FyersRosterTest.java"
+          test -f "$ROOT/app/src/test/java/com/betawithgamma/microstructure/ProviderConfigTest.java"
 
       - name: Bootstrap Gradle and Android SDK
         shell: bash
