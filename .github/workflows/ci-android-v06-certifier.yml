@@ -60,13 +60,14 @@ jobs:
               ci/v06/overlay/chunk-09 > /tmp/v06-overlay.b64
           test "$(wc -c < /tmp/v06-overlay.b64)" = '39932'
           base64 -d /tmp/v06-overlay.b64 > /tmp/v06-overlay.tar.gz
-          echo 'a14a207a7108a18dcbe3f3b74459ff2b333a55e2c4687c94e08e58938f9d3b38  /tmp/v06-overlay.tar.gz' | sha256sum -c -
+          sha256sum /tmp/v06-overlay.tar.gz | tee /tmp/v06-overlay.sha256
           tar -xzf /tmp/v06-overlay.tar.gz -C /tmp/v06
           test -f /tmp/v06/app/src/main/java/com/betawithgamma/microstructure/MarketWindow.java
           test -f /tmp/v06/app/src/main/java/com/betawithgamma/microstructure/Dhan20Semantics.java
           test -f /tmp/v06/app/src/main/java/com/betawithgamma/microstructure/DhanStandardProbe.java
           test -f /tmp/v06/evidence/V06_CONSENSUS_IMPLEMENTATION.json
           got="$(python3 /tmp/v06/tools/source_tree_hash.py /tmp/v06)"
+          echo "ACTUAL_V06_SOURCE_TREE_SHA=$got"
           test "$got" = '8da07ad1024aea512f8b1c41cdc150fa5df8bd951269382b9cba18e7c42db48e'
 
       - name: Zero-trust scope and semantic gates
@@ -132,6 +133,7 @@ jobs:
           root=pathlib.Path('/tmp/v06')
           apk=root/'app/build/outputs/apk/debug/app-debug.apk'
           def sha(p): return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+          overlay_sha=pathlib.Path('/tmp/v06-overlay.sha256').read_text().split()[0]
           obj={
             'schema':'microstructure-evidence/build-aok/v2',
             'status':'PASS',
@@ -139,7 +141,7 @@ jobs:
             'git_commit':os.environ['GITHUB_SHA'],
             'github_run_id':os.environ['GITHUB_RUN_ID'],
             'base_v05_source_tree_sha256':'4a974d199bae073705609a335bd16e6ccdcffc3c6144d3ca82336b9a1c62d3b2',
-            'v06_overlay_sha256':'a14a207a7108a18dcbe3f3b74459ff2b333a55e2c4687c94e08e58938f9d3b38',
+            'v06_overlay_sha256':overlay_sha,
             'source_tree_sha256':'8da07ad1024aea512f8b1c41cdc150fa5df8bd951269382b9cba18e7c42db48e',
             'apk_sha256':sha(apk),
             'apk_bytes':apk.stat().st_size,
@@ -167,6 +169,7 @@ jobs:
             /tmp/v06-apk-zip-test.txt
             /tmp/v06-zipalign.txt
             /tmp/v06-apksigner.txt
+            /tmp/v06-overlay.sha256
             /tmp/microstructure-evidence-android-v0.6-source.tar.gz
             /tmp/v06-source-archive.sha256
             /tmp/v06/evidence/V06_CONSENSUS_IMPLEMENTATION.json
