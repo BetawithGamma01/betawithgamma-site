@@ -1,0 +1,128 @@
+name: Build Microstructure Android V0.5 Certifier
+on:
+  push:
+    branches: ["ci-android-v05-certifier"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Verify and extract exact V0.5 source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          echo '266b5451ad9e616f00bbbde4b26d7b36332b86f996144b76f90f0ee3bb4d7051  ci/v05/microstructure-evidence-android-v0.5-certifier.tar.gz' | sha256sum -c -
+          rm -rf /tmp/v05 && mkdir -p /tmp/v05
+          tar -xzf ci/v05/microstructure-evidence-android-v0.5-certifier.tar.gz -C /tmp/v05
+          test -f /tmp/v05/app/src/main/java/com/betawithgamma/microstructure/FyersProtoDecoder.java
+          test -f /tmp/v05/app/src/main/java/com/betawithgamma/microstructure/Dhan20Decoder.java
+          test -f /tmp/v05/app/src/main/java/com/betawithgamma/microstructure/SessionCertifier.java
+          test -f /tmp/v05/evidence/CROSS_IMPLEMENTATION_EVIDENCE.json
+          got="$(python3 /tmp/v05/tools/source_tree_hash.py /tmp/v05)"
+          test "$got" = 'f1e940c38f3f4214b09a019a0e40cc75cc27802906b264fe5cc874fd4a9a4426'
+
+      - name: Zero-trust scope gate
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SRC=/tmp/v05/app/src/main/java
+          ! grep -RniE '(/orders|/positions|/funds|tradebook|placeOrder|modifyOrder|cancelOrder)' "$SRC"
+          grep -Rq 'BLOCKED_UNTIL_INDIVIDUAL_TRADE_PROOF' "$SRC/com/betawithgamma/microstructure/SessionCertifier.java"
+          grep -Rq 'retryOnConnectionFailure(false)' "$SRC/com/betawithgamma/microstructure/DhanConnector.java"
+          grep -Rq 'WATCHDOG_SCHEDULER_GAP' "$SRC/com/betawithgamma/microstructure/CaptureService.java"
+          grep -Rq 'installed_base_apk_sha256' "$SRC/com/betawithgamma/microstructure/BuildProvenance.java"
+          grep -Rq 'SHA256withECDSA' "$SRC/com/betawithgamma/microstructure/EvidenceSealer.java"
+
+      - name: Bootstrap Gradle and Android SDK 35
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          test -x /tmp/gradle-8.10.2/bin/gradle
+          if [ -x "${ANDROID_HOME:-}/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+            "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0'
+          fi
+          test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/zipalign"
+
+      - name: Unit tests and APK build
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd /tmp/v05
+          /tmp/gradle-8.10.2/bin/gradle --no-daemon --stacktrace \
+            -Pv05GitCommit="$GITHUB_SHA" \
+            -Pv05SourceTreeSha256='f1e940c38f3f4214b09a019a0e40cc75cc27802906b264fe5cc874fd4a9a4426' \
+            -Pv05CiRunId="$GITHUB_RUN_ID" \
+            :app:testDebugUnitTest :app:assembleDebug | tee /tmp/v05-build.log
+          test -f app/build/outputs/apk/debug/app-debug.apk
+
+      - name: APK integrity and signature gates
+        shell: bash
+        run: |
+          set -euxo pipefail
+          APK=/tmp/v05/app/build/outputs/apk/debug/app-debug.apk
+          unzip -t "$APK" | tee /tmp/v05-apk-zip-test.txt
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -v 4 "$APK" | tee /tmp/v05-zipalign.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee /tmp/v05-apksigner.txt
+          sha256sum "$APK" | tee /tmp/v05-apk.sha256
+
+      - name: Produce BUILD_AOK machine evidence
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path('/tmp/v05')
+          apk=root/'app/build/outputs/apk/debug/app-debug.apk'
+          def sha(p): return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+          obj={
+            'schema':'microstructure-evidence/build-aok/v1',
+            'status':'PASS',
+            'git_commit':os.environ['GITHUB_SHA'],
+            'github_run_id':os.environ['GITHUB_RUN_ID'],
+            'source_archive_sha256':'266b5451ad9e616f00bbbde4b26d7b36332b86f996144b76f90f0ee3bb4d7051',
+            'source_tree_sha256':'f1e940c38f3f4214b09a019a0e40cc75cc27802906b264fe5cc874fd4a9a4426',
+            'apk_sha256':sha(apk),
+            'apk_bytes':apk.stat().st_size,
+            'unit_tests':'PASS',
+            'assemble_debug':'PASS',
+            'zip_integrity':'PASS',
+            'zipalign':'PASS',
+            'apk_signature_verification':'PASS',
+            'blocked_claims':['TRUE_CVD','TRUE_FOOTPRINT','EXACT_TIME_AND_SALES','DHAN20_TRANSITION_CONTINUITY']
+          }
+          pathlib.Path('/tmp/BUILD_AOK.json').write_text(json.dumps(obj,indent=2)+'\n')
+          print(json.dumps(obj,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: microstructure-evidence-v0.5-decoder-certifier
+          path: |
+            /tmp/v05/app/build/outputs/apk/debug/app-debug.apk
+            /tmp/BUILD_AOK.json
+            /tmp/v05-build.log
+            /tmp/v05-apk.sha256
+            /tmp/v05-apk-zip-test.txt
+            /tmp/v05-zipalign.txt
+            /tmp/v05-apksigner.txt
+            /tmp/v05/evidence/CROSS_IMPLEMENTATION_EVIDENCE.json
+            /tmp/v05/evidence/LONG_CAPTURE_LIFECYCLE_FINDING.json
+            /tmp/v05/evidence/JAVA_REPLAY_ARTIFACTS.json
+            /tmp/v05/evidence/JAVA_REPLAY_*.txt
+            /tmp/v05/docs/EVIDENCE_CONTRACT.md
+          if-no-files-found: error
