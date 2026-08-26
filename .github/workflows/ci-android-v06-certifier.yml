@@ -24,9 +24,14 @@ jobs:
           test -x "$ANDROID_HOME/build-tools/35.0.0/zipalign"
           test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
           rm -rf /tmp/android-manual-kit
-          mkdir -p /tmp/android-manual-kit/sdk/platforms/android-35 /tmp/android-manual-kit/sdk/build-tools /tmp/android-manual-kit/deps
+          mkdir -p /tmp/android-manual-kit/sdk/platforms/android-35 /tmp/android-manual-kit/sdk/build-tools/35.0.0/lib /tmp/android-manual-kit/deps
           cp "$ANDROID_HOME/platforms/android-35/android.jar" /tmp/android-manual-kit/sdk/platforms/android-35/
-          cp -a "$ANDROID_HOME/build-tools/35.0.0" /tmp/android-manual-kit/sdk/build-tools/
+          cp "$ANDROID_HOME/build-tools/35.0.0/aapt2" /tmp/android-manual-kit/sdk/build-tools/35.0.0/
+          cp "$ANDROID_HOME/build-tools/35.0.0/d8" /tmp/android-manual-kit/sdk/build-tools/35.0.0/
+          cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" /tmp/android-manual-kit/sdk/build-tools/35.0.0/
+          cp "$ANDROID_HOME/build-tools/35.0.0/apksigner" /tmp/android-manual-kit/sdk/build-tools/35.0.0/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/d8.jar" /tmp/android-manual-kit/sdk/build-tools/35.0.0/lib/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" /tmp/android-manual-kit/sdk/build-tools/35.0.0/lib/
           cat > /tmp/pom.xml <<'POM'
           <project xmlns="http://maven.apache.org/POM/4.0.0">
             <modelVersion>4.0.0</modelVersion><groupId>local</groupId><artifactId>manual-kit</artifactId><version>1</version>
@@ -49,3 +54,4 @@ jobs:
           path: /tmp/android-manual-kit
           if-no-files-found: error
           compression-level: 6
+# trigger manual-kit v2
