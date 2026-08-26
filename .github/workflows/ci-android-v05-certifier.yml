@@ -1,4 +1,4 @@
-name: Build Microstructure Android V0.6 Certifier Probe U22
+name: Ferry Android Toolchain To Runtime
 on:
   push:
     branches: ["ci-android-v06-certifier"]
@@ -6,106 +6,44 @@ on:
 permissions:
   contents: read
 jobs:
-  build:
+  ferry:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Reconstruct exact V0.6 source
+      - name: Prepare exact build toolchain
         shell: bash
         run: |
           set -euxo pipefail
-          cat ci/v05/chunks/chunk-00 ci/v05/chunks/chunk-01 ci/v05/chunks/chunk-02 ci/v05/chunks/chunk-03 ci/v05/chunks/chunk-04 ci/v05/chunks/chunk-05 ci/v05/chunks/chunk-06a ci/v05/chunks/chunk-06b ci/v05/chunks/chunk-07a ci/v05/chunks/chunk-07b > /tmp/v05-source.b64
-          test "$(wc -c < /tmp/v05-source.b64)" = '60800'
-          base64 -d /tmp/v05-source.b64 > /tmp/v05-source.tar.gz
-          echo '266b5451ad9e616f00bbbde4b26d7b36332b86f996144b76f90f0ee3bb4d7051  /tmp/v05-source.tar.gz' | sha256sum -c -
-          rm -rf /tmp/v06 && mkdir -p /tmp/v06
-          tar -xzf /tmp/v05-source.tar.gz -C /tmp/v06
-          echo '8f4aa78150a8c5dfbc02d4d3cfba8afa0c04b76fc88dedf506492ec4242bcbe4  ci/v05/fixes/EvidenceSealer.java' | sha256sum -c -
-          cp ci/v05/fixes/EvidenceSealer.java /tmp/v06/app/src/main/java/com/betawithgamma/microstructure/EvidenceSealer.java
-          echo '0157e594017ca4131463333c724a3bfa8eb2f200b8ab77e4abdb28b0b44fa1a7  ci/v05/fixes/FyersBookReconstructorTest.java' | sha256sum -c -
-          cp ci/v05/fixes/FyersBookReconstructorTest.java /tmp/v06/app/src/test/java/com/betawithgamma/microstructure/FyersBookReconstructorTest.java
-          test "$(python3 /tmp/v06/tools/source_tree_hash.py /tmp/v06)" = '4a974d199bae073705609a335bd16e6ccdcffc3c6144d3ca82336b9a1c62d3b2'
-          cat ci/v06/overlay/chunk-00 ci/v06/overlay/chunk-01 ci/v06/overlay/chunk-02 ci/v06/overlay/chunk-03 ci/v06/overlay/chunk-04 ci/v06/overlay/chunk-05 ci/v06/overlay/chunk-06 ci/v06/overlay/chunk-07 ci/v06/overlay/chunk-08 ci/v06/overlay/chunk-09 > /tmp/v06-overlay.b64
-          test "$(wc -c < /tmp/v06-overlay.b64)" = '39932'
-          base64 -d /tmp/v06-overlay.b64 > /tmp/v06-overlay.tar.gz
-          sha256sum /tmp/v06-overlay.tar.gz | tee /tmp/v06-overlay.sha256
-          tar -xzf /tmp/v06-overlay.tar.gz -C /tmp/v06
-          test -f /tmp/v06/app/src/main/java/com/betawithgamma/microstructure/MarketWindow.java
-          test -f /tmp/v06/app/src/main/java/com/betawithgamma/microstructure/Dhan20Semantics.java
-          test -f /tmp/v06/app/src/main/java/com/betawithgamma/microstructure/DhanStandardProbe.java
-          got="$(python3 /tmp/v06/tools/source_tree_hash.py /tmp/v06)"
-          echo "ACTUAL_V06_SOURCE_TREE_SHA=$got"
-          test "$got" = '8da07ad1024aea512f8b1c41cdc150fa5df8bd951269382b9cba18e7c42db48e'
-      - name: Zero-trust semantic scope
-        shell: bash
-        run: |
-          set -euxo pipefail
-          SRC=/tmp/v06/app/src/main/java
-          ! grep -RniE '(/orders|/positions|/funds|tradebook|placeOrder|modifyOrder|cancelOrder)' "$SRC"
-          grep -Rq 'BLOCKED_UNTIL_INDIVIDUAL_TRADE_PROOF' "$SRC/com/betawithgamma/microstructure/SessionCertifier.java"
-          grep -Rq 'DHAN20_EXCHANGE_ATOMICITY' "$SRC/com/betawithgamma/microstructure/SessionFinalizer.java"
-          grep -Rq 'FEED_CONTINUITY_DISCONTINUITY_RESNAPSHOT_REQUIRED' "$SRC/com/betawithgamma/microstructure/FyersTbtConnector.java"
-          grep -Rq 'previous_session_inventory_sha256' "$SRC/com/betawithgamma/microstructure/SessionFinalizer.java"
-          grep -Rq 'MUST_BE_PINNED_EXTERNALLY' "$SRC/com/betawithgamma/microstructure/EvidenceSealer.java"
-          grep -Rq 'RUN_IDENTICAL_MATRIX_WITH_OFFICIAL_DHAN_PYTHON_CLIENT' "$SRC/com/betawithgamma/microstructure/DhanStandardProbe.java"
-          grep -Rq 'MARKET_CLOSED_BOOK_CLEAR' "$SRC/com/betawithgamma/microstructure/Dhan20Semantics.java"
-      - name: Bootstrap Android build toolchain
-        shell: bash
-        run: |
-          set -euxo pipefail
-          curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -o /tmp/gradle.zip
-          unzip -q /tmp/gradle.zip -d /tmp
-          test -x /tmp/gradle-8.10.2/bin/gradle
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -o /tmp/gradle-8.10.2-bin.zip
+          test -s /tmp/gradle-8.10.2-bin.zip
           if [ -x "${ANDROID_HOME:-}/cmdline-tools/latest/bin/sdkmanager" ]; then
-            yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0'
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'platform-tools'
           fi
-          test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aapt2"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/d8"
           test -x "$ANDROID_HOME/build-tools/35.0.0/zipalign"
-      - name: Unit tests and APK build
-        shell: bash
-        run: |
-          set -euxo pipefail
-          cd /tmp/v06
-          /tmp/gradle-8.10.2/bin/gradle --no-daemon --stacktrace -Pv06GitCommit="$GITHUB_SHA" -Pv06SourceTreeSha256='8da07ad1024aea512f8b1c41cdc150fa5df8bd951269382b9cba18e7c42db48e' -Pv06CiRunId="$GITHUB_RUN_ID" :app:testDebugUnitTest :app:assembleDebug | tee /tmp/v06-build.log
-          test -f app/build/outputs/apk/debug/app-debug.apk
-      - name: APK integrity signature and BUILD_AOK
-        shell: bash
-        run: |
-          set -euxo pipefail
-          APK=/tmp/v06/app/build/outputs/apk/debug/app-debug.apk
-          unzip -t "$APK" | tee /tmp/v06-apk-zip-test.txt
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -v 4 "$APK" | tee /tmp/v06-zipalign.txt
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee /tmp/v06-apksigner.txt
-          sha256sum "$APK" | tee /tmp/v06-apk.sha256
-          tar -czf /tmp/microstructure-evidence-android-v0.6-source.tar.gz -C /tmp/v06 .
-          sha256sum /tmp/microstructure-evidence-android-v0.6-source.tar.gz | tee /tmp/v06-source-archive.sha256
-          python3 - <<'PY'
-          import hashlib,json,os,pathlib
-          apk=pathlib.Path('/tmp/v06/app/build/outputs/apk/debug/app-debug.apk')
-          overlay_sha=pathlib.Path('/tmp/v06-overlay.sha256').read_text().split()[0]
-          obj={'schema':'microstructure-evidence/build-aok/v2','status':'PASS','release':'0.6.0-market-certifier-probe','git_commit':os.environ['GITHUB_SHA'],'github_run_id':os.environ['GITHUB_RUN_ID'],'runner_image':'ubuntu-22.04','base_v05_source_tree_sha256':'4a974d199bae073705609a335bd16e6ccdcffc3c6144d3ca82336b9a1c62d3b2','v06_overlay_sha256':overlay_sha,'source_tree_sha256':'8da07ad1024aea512f8b1c41cdc150fa5df8bd951269382b9cba18e7c42db48e','apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'apk_bytes':apk.stat().st_size,'unit_tests':'PASS','assemble_debug':'PASS','zip_integrity':'PASS','zipalign':'PASS','apk_signature_verification':'PASS','required_market_window':{'timezone':'Asia/Kolkata','start':'09:15:00','end':'15:30:00'},'blocked_claims':['TRUE_CVD','TRUE_FOOTPRINT','EXACT_TIME_AND_SALES','DHAN20_TRANSITION_CONTINUITY','DHAN20_EXCHANGE_ATOMICITY','OFI_UNTIL_MULTI_SESSION_CERTIFICATION']}
-          pathlib.Path('/tmp/BUILD_AOK_V06.json').write_text(json.dumps(obj,indent=2)+'\n')
-          print(json.dumps(obj,indent=2))
-          PY
+          test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          rm -rf /tmp/android-sdk-min && mkdir -p /tmp/android-sdk-min
+          cp -a "$ANDROID_HOME/platforms" /tmp/android-sdk-min/
+          cp -a "$ANDROID_HOME/build-tools" /tmp/android-sdk-min/
+          cp -a "$ANDROID_HOME/platform-tools" /tmp/android-sdk-min/
+          [ ! -d "$ANDROID_HOME/licenses" ] || cp -a "$ANDROID_HOME/licenses" /tmp/android-sdk-min/
+          tar -C /tmp -czf /tmp/android-sdk35-buildtools35.tar.gz android-sdk-min
+          sha256sum /tmp/gradle-8.10.2-bin.zip /tmp/android-sdk35-buildtools35.tar.gz > /tmp/toolchain.sha256
+          {
+            echo "GRADLE=8.10.2"
+            echo "ANDROID_PLATFORM=35"
+            echo "ANDROID_BUILD_TOOLS=35.0.0"
+            echo "ANDROID_HOME=$ANDROID_HOME"
+          } > /tmp/toolchain.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: microstructure-evidence-v0.6-market-certifier-probe-u22
+          name: android-local-toolchain-ferry
           path: |
-            /tmp/v06/app/build/outputs/apk/debug/app-debug.apk
-            /tmp/BUILD_AOK_V06.json
-            /tmp/v06-build.log
-            /tmp/v06-apk.sha256
-            /tmp/v06-apk-zip-test.txt
-            /tmp/v06-zipalign.txt
-            /tmp/v06-apksigner.txt
-            /tmp/v06-overlay.sha256
-            /tmp/microstructure-evidence-android-v0.6-source.tar.gz
-            /tmp/v06-source-archive.sha256
-            /tmp/v06/evidence/V06_CONSENSUS_IMPLEMENTATION.json
-            /tmp/v06/docs/EVIDENCE_CONTRACT.md
+            /tmp/gradle-8.10.2-bin.zip
+            /tmp/android-sdk35-buildtools35.tar.gz
+            /tmp/toolchain.sha256
+            /tmp/toolchain.txt
           if-no-files-found: error
