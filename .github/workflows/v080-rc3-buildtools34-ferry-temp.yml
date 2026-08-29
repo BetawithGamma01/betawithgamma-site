@@ -1,0 +1,38 @@
+name: V080 RC3 Build Tools 34 Ferry Temp
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/v080-rc3-buildtools34-ferry-temp.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  ferry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: android-actions/setup-android@v3
+      - name: Install exact Build Tools 34
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'build-tools;34.0.0'
+      - name: Package build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=/tmp/v080-rc3-buildtools34
+          mkdir -p "$OUT/build-tools"
+          cp -a "$ANDROID_SDK_ROOT/build-tools/34.0.0" "$OUT/build-tools/"
+          (cd "$OUT" && find . -type f -print0 | sort -z | xargs -0 sha256sum) > "$OUT/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v080-rc3-buildtools34
+          retention-days: 1
+          if-no-files-found: error
+          include-hidden-files: true
+          path: /tmp/v080-rc3-buildtools34/
