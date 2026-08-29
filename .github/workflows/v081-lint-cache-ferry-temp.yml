@@ -1,0 +1,83 @@
+name: V081 Lint Cache Ferry Temp
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/v081-lint-cache-ferry-temp.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  ferry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Resolve AGP 8.7.3 release lint graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          P=/tmp/v081-lint-bootstrap
+          mkdir -p "$P/app/src/main/java/x" "$P/app/src/main/res/values"
+          cat > "$P/settings.gradle.kts" <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = "V081LintBootstrap"
+          include(":app")
+          EOF
+          cat > "$P/build.gradle.kts" <<'EOF'
+          plugins { id("com.android.application") version "8.7.3" apply false }
+          EOF
+          cat > "$P/app/build.gradle.kts" <<'EOF'
+          plugins { id("com.android.application") }
+          android {
+            namespace = "x.bootstrap"
+            compileSdk = 35
+            buildToolsVersion = "35.0.0"
+            defaultConfig { applicationId = "x.bootstrap"; minSdk = 26; targetSdk = 35; versionCode = 1; versionName = "1" }
+            compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+          }
+          EOF
+          cat > "$P/app/src/main/AndroidManifest.xml" <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:theme="@style/AppTheme"/></manifest>
+          EOF
+          cat > "$P/app/src/main/res/values/styles.xml" <<'EOF'
+          <resources><style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"/></resources>
+          EOF
+          cat > "$P/app/src/main/java/x/MainActivity.java" <<'EOF'
+          package x; public final class MainActivity {}
+          EOF
+          gradle -p "$P" --no-daemon --stacktrace :app:assembleRelease
+      - name: Package dependency cache only
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=/tmp/v081-lint-cache
+          mkdir -p "$OUT/caches"
+          cp -a "$HOME/.gradle/caches/modules-2" "$OUT/caches/"
+          for d in "$HOME/.gradle/caches"/8.9 "$HOME/.gradle/caches"/jars-* "$HOME/.gradle/caches"/transforms-*; do
+            [ -e "$d" ] && cp -a "$d" "$OUT/caches/"
+          done
+          (cd "$OUT" && find . -type f -print0 | sort -z | xargs -0 sha256sum) > "$OUT/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v081-lint-cache
+          retention-days: 1
+          if-no-files-found: error
+          include-hidden-files: true
+          path: /tmp/v081-lint-cache/
