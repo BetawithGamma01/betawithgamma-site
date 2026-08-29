@@ -1,0 +1,92 @@
+name: V080 RC3 Gradle Cache Bootstrap Temp
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/v080-rc3-gradle-cache-bootstrap-temp.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android API 35
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Resolve exact RC3 Gradle and AGP dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          P=/tmp/rc3-bootstrap
+          mkdir -p "$P/app/src/main/java/x" "$P/app/src/main/res/values"
+          cat > "$P/settings.gradle.kts" <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = "RC3Bootstrap"
+          include(":app")
+          EOF
+          cat > "$P/build.gradle.kts" <<'EOF'
+          plugins { id("com.android.application") version "8.7.3" apply false }
+          EOF
+          cat > "$P/app/build.gradle.kts" <<'EOF'
+          plugins { id("com.android.application") }
+          android {
+            namespace = "x.bootstrap"
+            compileSdk = 35
+            defaultConfig { applicationId = "x.bootstrap"; minSdk = 26; targetSdk = 35; versionCode = 1; versionName = "1" }
+            compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+          }
+          dependencies {
+            implementation("com.squareup.okhttp3:okhttp:4.12.0")
+            testImplementation("junit:junit:4.13.2")
+            testImplementation("org.json:json:20240303")
+          }
+          EOF
+          cat > "$P/app/src/main/AndroidManifest.xml" <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:theme="@style/AppTheme"/></manifest>
+          EOF
+          cat > "$P/app/src/main/res/values/styles.xml" <<'EOF'
+          <resources><style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"/></resources>
+          EOF
+          cat > "$P/app/src/main/java/x/MainActivity.java" <<'EOF'
+          package x; public final class MainActivity {}
+          EOF
+          gradle -p "$P" --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - name: Package Gradle 8.9 plus resolved caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=/tmp/v080-rc3-gradle-offline
+          mkdir -p "$OUT/gradle-home" "$OUT/user-home/caches"
+          GRADLE_BIN="$(readlink -f "$(command -v gradle)")"
+          GRADLE_HOME="$(dirname "$(dirname "$GRADLE_BIN")")"
+          cp -a "$GRADLE_HOME/." "$OUT/gradle-home/"
+          cp -a "$HOME/.gradle/caches/modules-2" "$OUT/user-home/caches/"
+          for d in "$HOME/.gradle/caches"/8.9 "$HOME/.gradle/caches"/jars-* "$HOME/.gradle/caches"/transforms-*; do
+            [ -e "$d" ] && cp -a "$d" "$OUT/user-home/caches/"
+          done
+          java -version 2>&1 > "$OUT/JAVA_VERSION.txt"
+          gradle --version > "$OUT/GRADLE_VERSION.txt"
+          (cd "$OUT" && find . -type f -print0 | sort -z | xargs -0 sha256sum) > "$OUT/SHA256SUMS.txt"
+          du -sh "$OUT" | tee "$OUT/SIZE.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v080-rc3-gradle-offline
+          retention-days: 1
+          if-no-files-found: error
+          path: /tmp/v080-rc3-gradle-offline/
