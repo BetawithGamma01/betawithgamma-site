@@ -1,0 +1,46 @@
+name: TITAN v1.1 Assemble Encrypted Input
+
+on:
+  push:
+    branches:
+      - titan-v1.1-secure-build-20260829
+    paths:
+      - .github/workflows/titan11-assemble-input.yml
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: titan-v1.1-secure-build-20260829
+          fetch-depth: 1
+
+      - name: Assemble and verify exact ciphertext
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat titan11/input/chunks/part-00 \
+              titan11/input/chunks/part-01 \
+              titan11/input/chunks/part-02 \
+              titan11/input/chunks/part-03 \
+              titan11/input/chunks/part-04 \
+              titan11/input/chunks/part-05 \
+              > titan11/input/source.cms.b64
+          echo "d552e25d6497968065085fa1dc5a80f395e6644b1a385f92426fc7d6635c7e30  titan11/input/source.cms.b64" | sha256sum -c -
+          test "$(wc -c < titan11/input/source.cms.b64)" -eq 42556
+
+      - name: Publish only verified assembled ciphertext
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add titan11/input/source.cms.b64
+          git commit -m "build: publish verified TITAN v1.1 encrypted source envelope"
+          git push origin HEAD:titan-v1.1-secure-build-20260829
