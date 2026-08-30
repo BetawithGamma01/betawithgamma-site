@@ -1,0 +1,39 @@
+name: V085 Generic JDK17 Ferry
+
+on:
+  push:
+    branches:
+      - ci/android-toolchain-bootstrap-20260829
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ferry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Package public JDK17
+        shell: bash
+        run: |
+          set -euo pipefail
+          O=/tmp/jdk17-ferry
+          rm -rf "$O" && mkdir -p "$O"
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version 2>&1 | tee "$O/JAVA_VERSION.txt"
+          tar -C "$(dirname "$JAVA_HOME")" -czf "$O/temurin17-linux-x64.tar.gz" "$(basename "$JAVA_HOME")"
+          sha256sum "$O/temurin17-linux-x64.tar.gz" "$O/JAVA_VERSION.txt" > "$O/SHA256SUMS.txt"
+          du -h "$O"/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v085-generic-jdk17-linux
+          retention-days: 1
+          if-no-files-found: error
+          compression-level: 0
+          path: /tmp/jdk17-ferry/
