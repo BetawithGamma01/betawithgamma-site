@@ -1,0 +1,48 @@
+name: V083 Canonical Toolchain Ferry Temp
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/v083-canonical-toolchain-ferry-temp.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  ferry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install exact Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'platform-tools'
+      - name: Package generic toolchain only
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=/tmp/v083-toolchain
+          mkdir -p "$OUT/sdk/platforms" "$OUT/sdk/build-tools" "$OUT/sdk/platform-tools" "$OUT/jdk"
+          cp -a "$ANDROID_HOME/platforms/android-35" "$OUT/sdk/platforms/"
+          cp -a "$ANDROID_HOME/build-tools/35.0.0" "$OUT/sdk/build-tools/"
+          cp -a "$ANDROID_HOME/platform-tools/." "$OUT/sdk/platform-tools/"
+          cp -a "$JAVA_HOME/." "$OUT/jdk/"
+          printf 'java_home=%s\n' "$JAVA_HOME" > "$OUT/VERSIONS.txt"
+          java -version 2>> "$OUT/VERSIONS.txt"
+          sdkmanager --list_installed >> "$OUT/VERSIONS.txt"
+          (cd "$OUT" && find . -type f -print0 | sort -z | xargs -0 sha256sum) > "$OUT/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v083-canonical-toolchain
+          retention-days: 1
+          if-no-files-found: error
+          include-hidden-files: true
+          path: /tmp/v083-toolchain/
