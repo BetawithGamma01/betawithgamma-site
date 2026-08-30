@@ -1,0 +1,42 @@
+name: V085 Generic Android35 SDK Ferry
+
+on:
+  push:
+    branches:
+      - ci/android-toolchain-bootstrap-20260829
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ferry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: android-actions/setup-android@v3
+      - name: Install and package exact Android SDK subset
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'platform-tools'
+          O=/tmp/sdk35-ferry
+          rm -rf "$O" && mkdir -p "$O/sdk"
+          cp -a "$ANDROID_SDK_ROOT/platforms" "$O/sdk/"
+          cp -a "$ANDROID_SDK_ROOT/build-tools" "$O/sdk/"
+          cp -a "$ANDROID_SDK_ROOT/platform-tools" "$O/sdk/"
+          [ ! -d "$ANDROID_SDK_ROOT/licenses" ] || cp -a "$ANDROID_SDK_ROOT/licenses" "$O/sdk/"
+          tar -C "$O" -czf "$O/android-sdk35-full-subset.tar.gz" sdk
+          test "$(stat -c %s "$O/android-sdk35-full-subset.tar.gz")" -gt 30000000
+          rm -rf "$O/sdk"
+          sha256sum "$O/android-sdk35-full-subset.tar.gz" > "$O/SHA256SUMS.txt"
+          du -h "$O"/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v085-generic-android35-sdk-full-subset
+          retention-days: 1
+          if-no-files-found: error
+          compression-level: 0
+          path: /tmp/sdk35-ferry/
