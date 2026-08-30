@@ -1,0 +1,41 @@
+name: V085 Android35 Platform-Only Ferry
+
+on:
+  push:
+    branches:
+      - ci/android-toolchain-bootstrap-20260829
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ferry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: android-actions/setup-android@v3
+      - name: Install and package Android platform 35 only
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-35'
+          P="$ANDROID_SDK_ROOT/platforms/android-35"
+          test -f "$P/android.jar"
+          test -f "$P/source.properties"
+          O=/tmp/platform35-ferry
+          rm -rf "$O" && mkdir -p "$O"
+          tar -C "$ANDROID_SDK_ROOT/platforms" -czf "$O/android-platform-35.tar.gz" android-35
+          test "$(stat -c %s "$O/android-platform-35.tar.gz")" -gt 20000000
+          test "$(stat -c %s "$O/android-platform-35.tar.gz")" -lt 500000000
+          sha256sum "$O/android-platform-35.tar.gz" > "$O/SHA256SUMS.txt"
+          du -h "$O"/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v085-android-platform35-only
+          retention-days: 1
+          if-no-files-found: error
+          compression-level: 0
+          path: /tmp/platform35-ferry/
