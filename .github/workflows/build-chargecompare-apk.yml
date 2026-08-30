@@ -1,0 +1,63 @@
+name: Build ChargeCompare APK
+
+on:
+  push:
+    branches:
+      - chargecompare-android-build
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Restore Android project
+        run: |
+          rm -f ChargeCompareAndroid.zip
+          for f in .chargecompare/part*.b64; do
+            base64 --decode "$f" >> ChargeCompareAndroid.zip
+          done
+          echo "e674989e48b49f295628e72efeffd850f18f99815156bc394fdaacbede20b030  ChargeCompareAndroid.zip" | sha256sum -c -
+          unzip -q ChargeCompareAndroid.zip
+          test -f ChargeCompareAndroid/settings.gradle
+
+      - name: Build debug APK
+        run: gradle -p ChargeCompareAndroid --no-daemon :app:assembleDebug
+
+      - name: Prepare APK
+        run: |
+          mkdir -p out
+          cp ChargeCompareAndroid/app/build/outputs/apk/debug/app-debug.apk out/ChargeCompare-debug.apk
+          sha256sum out/ChargeCompare-debug.apk > out/SHA256.txt
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChargeCompare-Android-APK
+          path: out/
+          retention-days: 14
