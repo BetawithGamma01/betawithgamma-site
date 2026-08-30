@@ -1,0 +1,105 @@
+name: Build ChargeCompare Truth v3 Evidence APK
+
+on:
+  push:
+    branches:
+      - chargecompare-v3-evidence-engine
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Reconstruct and verify v3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .chargecompare-v3/chunk*.b64 | tr -d '[:space:]' | base64 --decode > ChargeCompareAndroidV3.zip
+          echo 'c4f54e2d3c2c4c5ebe64b5f738e6855f3dddbae9730462600d5c9d2737fd9b67  ChargeCompareAndroidV3.zip' | sha256sum -c -
+          unzip -q ChargeCompareAndroidV3.zip
+          test -f ChargeCompareAndroid/app/src/test/java/com/oai/chargecompare/EvidenceEngineTest.java
+          grep -q 'BATTERY_PROPERTY_CURRENT_NOW' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/BatterySnapshot.java
+          grep -q 'BATTERY_PROPERTY_CHARGE_COUNTER' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/BatterySnapshot.java
+          grep -q 'BATTERY_PROPERTY_ENERGY_COUNTER' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/BatterySnapshot.java
+          grep -q 'rawCurrentNow' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/Sample.java
+          grep -q 'elapsedRealtime' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/Sample.java
+          grep -q 'bootstrap' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/CompareEngine.java
+          grep -q 'gap' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/UnitSanityReport.java
+          if grep -R 'Math.abs(current' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare; then
+            echo 'Raw-current absolute-value transform detected; refusing build.' >&2
+            exit 1
+          fi
+
+      - name: Evidence engine regression tests
+        run: gradle -p ChargeCompareAndroid --no-daemon :app:testDebugUnitTest
+
+      - name: Build debug APK
+        run: gradle -p ChargeCompareAndroid --no-daemon :app:assembleDebug
+
+      - name: Prepare evidence artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp ChargeCompareAndroid/app/build/outputs/apk/debug/app-debug.apk out/ChargeCompare-Truth-v3.apk
+          cp ChargeCompareAndroidV3.zip out/ChargeCompareAndroidV3-source.zip
+          sha256sum out/ChargeCompare-Truth-v3.apk > out/APK_SHA256.txt
+          sha256sum ChargeCompareAndroidV3.zip > out/SOURCE_SHA256.txt
+          cat > out/EVIDENCE_DESIGN.txt <<'EOF'
+          ChargeCompare Truth v3 - Evidence Engine
+
+          Raw observations are stored before interpretation.
+          Signed CURRENT_NOW/CURRENT_AVERAGE values are preserved.
+          CHARGE_COUNTER and ENERGY_COUNTER are recorded where supported.
+          Wall clock and monotonic timestamps are both recorded.
+          Screen interactive state and thermal status are recorded.
+
+          Current scale is inferred from independent counter evidence. If evidence
+          is inadequate or competing scales are not distinguishable, the app
+          refuses a wattage-based verdict.
+
+          Sampling gaps, power-source changes and invalid counter intervals are
+          excluded from integrations. Taper-zone sessions are explicitly flagged.
+          Comparisons use warm-up exclusion, trimmed sustained power, matched-SoC
+          data when possible, and a deterministic moving-block bootstrap 95% CI.
+          A small or uncertainty-crossing effect is reported as indistinguishable.
+
+          Battery-side telemetry does not prove negotiated charger/SUPERVOOC
+          input wattage; the app does not make that inference.
+
+          Build gate includes synthetic regression tests for unit inference,
+          sampling-gap rejection, evidence refusal, and no-false-winner behavior.
+          EOF
+
+      - name: Upload installable APK and evidence package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChargeCompare-Truth-v3-Evidence-APK
+          path: out/
+          retention-days: 14
