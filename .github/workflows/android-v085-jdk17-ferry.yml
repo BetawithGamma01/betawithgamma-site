@@ -25,10 +25,13 @@ jobs:
           set -euo pipefail
           O=/tmp/jdk17-ferry
           rm -rf "$O" && mkdir -p "$O"
-          echo "JAVA_HOME=$JAVA_HOME"
+          REAL_JAVA_HOME="$(readlink -f "$JAVA_HOME")"
+          echo "JAVA_HOME=$JAVA_HOME" | tee "$O/JAVA_HOME.txt"
+          echo "REAL_JAVA_HOME=$REAL_JAVA_HOME" | tee -a "$O/JAVA_HOME.txt"
           java -version 2>&1 | tee "$O/JAVA_VERSION.txt"
-          tar -C "$(dirname "$JAVA_HOME")" -czf "$O/temurin17-linux-x64.tar.gz" "$(basename "$JAVA_HOME")"
-          sha256sum "$O/temurin17-linux-x64.tar.gz" "$O/JAVA_VERSION.txt" > "$O/SHA256SUMS.txt"
+          tar -C "$(dirname "$REAL_JAVA_HOME")" -czf "$O/temurin17-linux-x64.tar.gz" "$(basename "$REAL_JAVA_HOME")"
+          test "$(stat -c %s "$O/temurin17-linux-x64.tar.gz")" -gt 50000000
+          sha256sum "$O/temurin17-linux-x64.tar.gz" "$O/JAVA_VERSION.txt" "$O/JAVA_HOME.txt" > "$O/SHA256SUMS.txt"
           du -h "$O"/*
       - uses: actions/upload-artifact@v4
         with:
