@@ -1,0 +1,111 @@
+name: Build ChargeCompare Truth v2 APK
+
+on:
+  push:
+    branches:
+      - chargecompare-v2-machine-truth
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Audit transferred source chunks
+        shell: bash
+        run: |
+          set -u
+          bad=0
+          for f in .chargecompare-v2/chunk*.b64; do
+            echo "=== $f ==="
+            wc -c "$f"
+            sha256sum "$f"
+            if base64 --decode "$f" >/dev/null; then
+              echo "BASE64_OK"
+            else
+              echo "BASE64_BAD"
+              bad=1
+            fi
+          done
+          exit "$bad"
+
+      - name: Reconstruct and verify source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .chargecompare-v2/chunk*.b64 | base64 --decode > ChargeCompareAndroidV2.zip
+          echo '53b13a43bf653a065c492c51b0ab79ac2ed9f33b7ab732a6b1e0fa70bb454682  ChargeCompareAndroidV2.zip' | sha256sum -c -
+          unzip -q ChargeCompareAndroidV2.zip
+          test -f ChargeCompareAndroid/settings.gradle
+          test -f ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/UnitSanityReport.java
+          grep -q 'BATTERY_PROPERTY_CURRENT_NOW' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/BatterySnapshot.java
+          grep -q 'BATTERY_PROPERTY_CHARGE_COUNTER' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/BatterySnapshot.java
+          grep -q 'BATTERY_PROPERTY_ENERGY_COUNTER' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/BatterySnapshot.java
+          grep -q 'rawCurrentNow' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/Sample.java
+          if grep -R 'Math.abs(current' ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare; then
+            echo 'Raw-current absolute-value transform detected; refusing build.' >&2
+            exit 1
+          fi
+
+      - name: Apply audited compile fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '1dc627d8758d5e8994f42515898e054c307f09893027362149ab2ea6c371f03c  .chargecompare-v2-overrides/UnitSanityReport.java' | sha256sum -c -
+          cp .chargecompare-v2-overrides/UnitSanityReport.java ChargeCompareAndroid/app/src/main/java/com/oai/chargecompare/UnitSanityReport.java
+
+      - name: Build debug APK
+        run: gradle -p ChargeCompareAndroid --no-daemon :app:assembleDebug
+
+      - name: Prepare evidence artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp ChargeCompareAndroid/app/build/outputs/apk/debug/app-debug.apk out/ChargeCompare-Truth-v2.apk
+          cp ChargeCompareAndroidV2.zip out/ChargeCompareAndroidV2-source.zip
+          sha256sum out/ChargeCompare-Truth-v2.apk > out/APK_SHA256.txt
+          sha256sum ChargeCompareAndroidV2.zip > out/SOURCE_SHA256.txt
+          sha256sum .chargecompare-v2-overrides/UnitSanityReport.java > out/OVERRIDE_SHA256.txt
+          cat > out/BUILD_NOTES.txt <<'EOF'
+          ChargeCompare Truth v2
+          applicationId: com.oai.chargecompare.truth
+          raw-first BatteryManager logging
+          CURRENT_NOW/CURRENT_AVERAGE preserved signed and unscaled in CSV
+          CHARGE_COUNTER and ENERGY_COUNTER recorded when supported
+          current-unit scale validated against independent evidence before power verdicts
+          UnitSanityReport compile-only variable rename applied from audited override
+          Reconstructed source ZIP included for reproducible follow-up builds
+          EOF
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChargeCompare-Truth-v2-APK
+          path: out/
+          retention-days: 14
