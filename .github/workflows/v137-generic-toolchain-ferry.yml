@@ -1,0 +1,90 @@
+name: V137 Generic Android Toolchain Ferry
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  ferry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
+        with:
+          gradle-version: '8.9'
+          cache-provider: basic
+      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+        with:
+          packages: ''
+      - name: Install generic pinned Android components
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Resolve AGP, lint and public dependencies only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/dummy/app/src/main/java/example /tmp/dummy/app/src/main/res/values
+          cat >/tmp/dummy/settings.gradle.kts <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name="V137GenericToolchain"; include(":app")
+          EOF
+          cat >/tmp/dummy/build.gradle.kts <<'EOF'
+          plugins { id("com.android.application") version "8.7.3" apply false }
+          EOF
+          cat >/tmp/dummy/app/build.gradle.kts <<'EOF'
+          plugins { id("com.android.application") }
+          android { namespace="example.ferry"; compileSdk=35; buildToolsVersion="35.0.0"; defaultConfig { applicationId="example.ferry"; minSdk=26; targetSdk=35; versionCode=1; versionName="1" } }
+          dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0"); testImplementation("junit:junit:4.13.2"); testImplementation("org.json:json:20240303") }
+          EOF
+          cat >/tmp/dummy/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:theme="@style/AppTheme"/></manifest>
+          EOF
+          cat >/tmp/dummy/app/src/main/res/values/styles.xml <<'EOF'
+          <resources><style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"/></resources>
+          EOF
+          cat >/tmp/dummy/app/src/main/java/example/Dummy.java <<'EOF'
+          package example; public final class Dummy { public static int one(){return 1;} }
+          EOF
+          cd /tmp/dummy
+          gradle --no-daemon --refresh-dependencies :app:testDebugUnitTest :app:lint :app:lintVitalRelease :app:assembleDebug
+      - name: Package split Gradle/AGP/lint ferry
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK="$GITHUB_WORKSPACE/ferry-parts"; mkdir -p "$WORK/stage"
+          GRADLE_BIN="$(readlink -f "$(command -v gradle)")"
+          GRADLE_HOME="$(cd "$(dirname "$GRADLE_BIN")/.." && pwd)"
+          cp -a "$GRADLE_HOME" "$WORK/stage/gradle-home"
+          mkdir -p "$WORK/stage/gradle-user-home"
+          cp -a "$HOME/.gradle/caches" "$WORK/stage/gradle-user-home/"
+          cp -a "$HOME/.gradle/native" "$WORK/stage/gradle-user-home/" 2>/dev/null || true
+          {
+            java -version 2>&1
+            gradle --version
+            echo "GRADLE_HOME_BASENAME=$(basename "$GRADLE_HOME")"
+          } > "$WORK/stage/TOOLCHAIN_VERSIONS.txt"
+          tar -C "$WORK/stage" -czf "$WORK/v137-gradle-agp-lint.tar.gz" .
+          split -b 240M -d -a 2 "$WORK/v137-gradle-agp-lint.tar.gz" "$WORK/v137-gradle-agp-lint.part"
+          (cd "$WORK" && sha256sum v137-gradle-agp-lint.part* > PARTS.sha256)
+          du -h "$WORK"/*
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: v137-gradle-part00, path: "ferry-parts/v137-gradle-agp-lint.part00\nferry-parts/PARTS.sha256", if-no-files-found: error, retention-days: 7}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: v137-gradle-part01, path: "ferry-parts/v137-gradle-agp-lint.part01\nferry-parts/PARTS.sha256", if-no-files-found: ignore, retention-days: 7}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: v137-gradle-part02, path: "ferry-parts/v137-gradle-agp-lint.part02\nferry-parts/PARTS.sha256", if-no-files-found: ignore, retention-days: 7}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: v137-gradle-part03, path: "ferry-parts/v137-gradle-agp-lint.part03\nferry-parts/PARTS.sha256", if-no-files-found: ignore, retention-days: 7}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: v137-gradle-part04, path: "ferry-parts/v137-gradle-agp-lint.part04\nferry-parts/PARTS.sha256", if-no-files-found: ignore, retention-days: 7}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: v137-gradle-part05, path: "ferry-parts/v137-gradle-agp-lint.part05\nferry-parts/PARTS.sha256", if-no-files-found: ignore, retention-days: 7}

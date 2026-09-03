@@ -1,0 +1,51 @@
+name: V137 Generic Desugar JDK Lib Ferry 3
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  ferry-desugar3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
+        with:
+          gradle-version: '8.9'
+          cache-provider: basic
+      - name: Resolve and export public desugar configuration only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/desugar/app
+          cat >/tmp/desugar/settings.gradle.kts <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name="V137DesugarFerry"; include(":app")
+          EOF
+          cat >/tmp/desugar/build.gradle.kts <<'EOF'
+          plugins { id("com.android.application") version "8.7.3" apply false }
+          EOF
+          cat >/tmp/desugar/app/build.gradle.kts <<'EOF'
+          plugins { id("com.android.application") }
+          android { namespace="example.desugar"; compileSdk=35; defaultConfig { applicationId="example.desugar"; minSdk=26; targetSdk=35; versionCode=1; versionName="1" }; compileOptions { isCoreLibraryDesugaringEnabled=true; sourceCompatibility=JavaVersion.VERSION_17; targetCompatibility=JavaVersion.VERSION_17 } }
+          dependencies { coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3") }
+          tasks.register<Copy>("copyDesugar") { from(configurations.getByName("coreLibraryDesugaring")); into(layout.projectDirectory.dir("desugar-out")) }
+          EOF
+          cd /tmp/desugar
+          gradle --no-daemon :app:copyDesugar
+          OUT=/tmp/desugar/app/desugar-out
+          test -d "$OUT"
+          (cd "$OUT" && sha256sum * > SHA256.txt && ls -lh)
+          cp -a "$OUT" "$GITHUB_WORKSPACE/desugar-out"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v137-desugar-jdk-libs-2.0.3-resolved-v3
+          path: desugar-out/
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,44 @@
+name: V137 Generic SDK Core Ferry
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  ferry-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+        with:
+          packages: ''
+      - name: Install pinned SDK core
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Package complete SDK metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          W="$GITHUB_WORKSPACE/sdk-core"; mkdir -p "$W/stage"
+          cp -a "$ANDROID_SDK_ROOT/platform-tools" "$W/stage/"
+          mkdir -p "$W/stage/platforms" "$W/stage/build-tools"
+          cp -a "$ANDROID_SDK_ROOT/platforms/android-35" "$W/stage/platforms/"
+          cp -a "$ANDROID_SDK_ROOT/build-tools/35.0.0" "$W/stage/build-tools/"
+          cp -a "$ANDROID_SDK_ROOT/licenses" "$W/stage/" 2>/dev/null || true
+          cp -a "$ANDROID_SDK_ROOT/cmdline-tools" "$W/stage/" 2>/dev/null || true
+          sdkmanager --list_installed > "$W/stage/SDK_PACKAGES.txt"
+          tar -C "$W/stage" -czf "$W/v137-sdk-core.tar.gz" .
+          sha256sum "$W/v137-sdk-core.tar.gz" > "$W/SHA256.txt"
+          du -h "$W/v137-sdk-core.tar.gz"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v137-sdk-core
+          path: |
+            sdk-core/v137-sdk-core.tar.gz
+            sdk-core/SHA256.txt
+          if-no-files-found: error
+          retention-days: 7
