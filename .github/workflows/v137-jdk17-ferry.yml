@@ -19,15 +19,34 @@ jobs:
         run: |
           set -euo pipefail
           W="$GITHUB_WORKSPACE/jdk-parts"; mkdir -p "$W"
-          JH="$(cd "$JAVA_HOME" && pwd)"
+          JH="$(readlink -f "$JAVA_HOME")"
           java -version 2>"$W/JAVA_VERSION.txt"
           tar -C "$(dirname "$JH")" -czf "$W/temurin17.tar.gz" "$(basename "$JH")"
           split -b 240M -d -a 2 "$W/temurin17.tar.gz" "$W/temurin17.part"
           (cd "$W" && sha256sum temurin17.part* > PARTS.sha256)
           du -h "$W"/*
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: {name: v137-jdk17-part00, path: "jdk-parts/temurin17.part00\njdk-parts/PARTS.sha256\njdk-parts/JAVA_VERSION.txt", if-no-files-found: error, retention-days: 7}
+        with:
+          name: v137-jdk17-part00
+          path: |
+            jdk-parts/temurin17.part00
+            jdk-parts/PARTS.sha256
+            jdk-parts/JAVA_VERSION.txt
+          if-no-files-found: error
+          retention-days: 7
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: {name: v137-jdk17-part01, path: "jdk-parts/temurin17.part01\njdk-parts/PARTS.sha256", if-no-files-found: ignore, retention-days: 7}
+        with:
+          name: v137-jdk17-part01
+          path: |
+            jdk-parts/temurin17.part01
+            jdk-parts/PARTS.sha256
+          if-no-files-found: ignore
+          retention-days: 7
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: {name: v137-jdk17-part02, path: "jdk-parts/temurin17.part02\njdk-parts/PARTS.sha256", if-no-files-found: ignore, retention-days: 7}
+        with:
+          name: v137-jdk17-part02
+          path: |
+            jdk-parts/temurin17.part02
+            jdk-parts/PARTS.sha256
+          if-no-files-found: ignore
+          retention-days: 7
