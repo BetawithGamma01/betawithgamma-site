@@ -26,7 +26,7 @@ jobs:
         run: |
           set -euo pipefail
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - name: Resolve AGP, lint and public dependencies only
         shell: bash
         run: |
@@ -56,32 +56,35 @@ jobs:
           EOF
           cd /tmp/dummy
           gradle --no-daemon --refresh-dependencies :app:testDebugUnitTest :app:lint :app:lintVitalRelease :app:assembleDebug
-      - name: Package generic Gradle/AGP/emulator ferry
+      - name: Package split Gradle/AGP/lint ferry
         shell: bash
         run: |
           set -euo pipefail
-          OUT="$GITHUB_WORKSPACE/ferry"; mkdir -p "$OUT/gradle-user-home" "$OUT/android-sdk"
+          WORK="$GITHUB_WORKSPACE/ferry-parts"; mkdir -p "$WORK/stage"
           GRADLE_BIN="$(readlink -f "$(command -v gradle)")"
           GRADLE_HOME="$(cd "$(dirname "$GRADLE_BIN")/.." && pwd)"
-          cp -a "$GRADLE_HOME" "$OUT/gradle-home"
-          cp -a "$HOME/.gradle/caches" "$OUT/gradle-user-home/"
-          cp -a "$ANDROID_SDK_ROOT/platform-tools" "$OUT/android-sdk/"
-          cp -a "$ANDROID_SDK_ROOT/platforms" "$OUT/android-sdk/"
-          cp -a "$ANDROID_SDK_ROOT/build-tools" "$OUT/android-sdk/"
-          cp -a "$ANDROID_SDK_ROOT/emulator" "$OUT/android-sdk/"
-          cp -a "$ANDROID_SDK_ROOT/system-images" "$OUT/android-sdk/"
-          cp -a "$ANDROID_SDK_ROOT/cmdline-tools" "$OUT/android-sdk/"
-          cp -a "$ANDROID_SDK_ROOT/licenses" "$OUT/android-sdk/" 2>/dev/null || true
+          cp -a "$GRADLE_HOME" "$WORK/stage/gradle-home"
+          mkdir -p "$WORK/stage/gradle-user-home"
+          cp -a "$HOME/.gradle/caches" "$WORK/stage/gradle-user-home/"
+          cp -a "$HOME/.gradle/native" "$WORK/stage/gradle-user-home/" 2>/dev/null || true
           {
             java -version 2>&1
             gradle --version
-            sdkmanager --list_installed
             echo "GRADLE_HOME_BASENAME=$(basename "$GRADLE_HOME")"
-          } > "$OUT/TOOLCHAIN_VERSIONS.txt"
-          (cd "$OUT" && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+          } > "$WORK/stage/TOOLCHAIN_VERSIONS.txt"
+          tar -C "$WORK/stage" -czf "$WORK/v137-gradle-agp-lint.tar.gz" .
+          split -b 240M -d -a 2 "$WORK/v137-gradle-agp-lint.tar.gz" "$WORK/v137-gradle-agp-lint.part"
+          (cd "$WORK" && sha256sum v137-gradle-agp-lint.part* > PARTS.sha256)
+          du -h "$WORK"/*
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: v137-generic-gradle-agp-emulator-ferry
-          path: ferry/
-          if-no-files-found: error
-          retention-days: 7
+        with: {name: v137-gradle-part00, path: "ferry-parts/v137-gradle-agp-lint.part00\nferry-parts/PARTS.sha256", if-no-files-found: error, retention-days: 7}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: v137-gradle-part01, path: "ferry-parts/v137-gradle-agp-lint.part01\nferry-parts/PARTS.sha256", if-no-files-found: ignore, retention-days: 7}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: v137-gradle-part02, path: "ferry-parts/v137-gradle-agp-lint.part02\nferry-parts/PARTS.sha256", if-no-files-found: ignore, retention-days: 7}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: v137-gradle-part03, path: "ferry-parts/v137-gradle-agp-lint.part03\nferry-parts/PARTS.sha256", if-no-files-found: ignore, retention-days: 7}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: v137-gradle-part04, path: "ferry-parts/v137-gradle-agp-lint.part04\nferry-parts/PARTS.sha256", if-no-files-found: ignore, retention-days: 7}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: v137-gradle-part05, path: "ferry-parts/v137-gradle-agp-lint.part05\nferry-parts/PARTS.sha256", if-no-files-found: ignore, retention-days: 7}
