@@ -1,0 +1,87 @@
+name: V137 Generic Android Toolchain Ferry
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  ferry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
+        with:
+          gradle-version: '8.9'
+          cache-provider: basic
+      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+        with:
+          packages: ''
+      - name: Install generic pinned Android components
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0' 'emulator' 'system-images;android-35;google_apis;x86_64'
+      - name: Resolve AGP, lint and public dependencies only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/dummy/app/src/main/java/example /tmp/dummy/app/src/main/res/values
+          cat >/tmp/dummy/settings.gradle.kts <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name="V137GenericToolchain"; include(":app")
+          EOF
+          cat >/tmp/dummy/build.gradle.kts <<'EOF'
+          plugins { id("com.android.application") version "8.7.3" apply false }
+          EOF
+          cat >/tmp/dummy/app/build.gradle.kts <<'EOF'
+          plugins { id("com.android.application") }
+          android { namespace="example.ferry"; compileSdk=35; buildToolsVersion="35.0.0"; defaultConfig { applicationId="example.ferry"; minSdk=26; targetSdk=35; versionCode=1; versionName="1" } }
+          dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0"); testImplementation("junit:junit:4.13.2"); testImplementation("org.json:json:20240303") }
+          EOF
+          cat >/tmp/dummy/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:theme="@style/AppTheme"/></manifest>
+          EOF
+          cat >/tmp/dummy/app/src/main/res/values/styles.xml <<'EOF'
+          <resources><style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"/></resources>
+          EOF
+          cat >/tmp/dummy/app/src/main/java/example/Dummy.java <<'EOF'
+          package example; public final class Dummy { public static int one(){return 1;} }
+          EOF
+          cd /tmp/dummy
+          gradle --no-daemon --refresh-dependencies :app:testDebugUnitTest :app:lint :app:lintVitalRelease :app:assembleDebug
+      - name: Package generic Gradle/AGP/emulator ferry
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/ferry"; mkdir -p "$OUT/gradle-user-home" "$OUT/android-sdk"
+          GRADLE_BIN="$(readlink -f "$(command -v gradle)")"
+          GRADLE_HOME="$(cd "$(dirname "$GRADLE_BIN")/.." && pwd)"
+          cp -a "$GRADLE_HOME" "$OUT/gradle-home"
+          cp -a "$HOME/.gradle/caches" "$OUT/gradle-user-home/"
+          cp -a "$ANDROID_SDK_ROOT/platform-tools" "$OUT/android-sdk/"
+          cp -a "$ANDROID_SDK_ROOT/platforms" "$OUT/android-sdk/"
+          cp -a "$ANDROID_SDK_ROOT/build-tools" "$OUT/android-sdk/"
+          cp -a "$ANDROID_SDK_ROOT/emulator" "$OUT/android-sdk/"
+          cp -a "$ANDROID_SDK_ROOT/system-images" "$OUT/android-sdk/"
+          cp -a "$ANDROID_SDK_ROOT/cmdline-tools" "$OUT/android-sdk/"
+          cp -a "$ANDROID_SDK_ROOT/licenses" "$OUT/android-sdk/" 2>/dev/null || true
+          {
+            java -version 2>&1
+            gradle --version
+            sdkmanager --list_installed
+            echo "GRADLE_HOME_BASENAME=$(basename "$GRADLE_HOME")"
+          } > "$OUT/TOOLCHAIN_VERSIONS.txt"
+          (cd "$OUT" && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v137-generic-gradle-agp-emulator-ferry
+          path: ferry/
+          if-no-files-found: error
+          retention-days: 7
